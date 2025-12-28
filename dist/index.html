@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 - 页面未找到</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", Arial, sans-serif;
+        }
+
+        body {
+            background-color: #f5f7fa;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            color: #333;
+            padding: 20px;
+        }
+
+        .error-container {
+            text-align: center;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        .error-code {
+            font-size: 120px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            letter-spacing: 10px;
+        }
+
+        .error-message {
+            font-size: 24px;
+            margin-bottom: 30px;
+            color: #34495e;
+        }
+
+        .error-desc {
+            font-size: 16px;
+            color: #7f8c8d;
+            margin-bottom: 40px;
+            line-height: 1.6;
+        }
+
+        .back-home {
+            display: inline-block;
+            padding: 12px 30px;
+            background-color: #3498db;
+            color: #fff;
+            text-decoration: none;
+            border-radius: 50px;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+
+        .back-home:hover {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+        }
+
+        /* 响应式适配移动端 */
+        @media (max-width: 768px) {
+            .error-code {
+                font-size: 80px;
+            }
+
+            .error-message {
+                font-size: 20px;
+            }
+
+            .error-desc {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <div class="error-code">404</div>
+        <div class="error-message">哎呀，页面走丢了！</div>
+        <div class="error-desc">
+            你访问的页面不存在、已被删除或网址输入错误<br>
+            请检查网址是否正确，或返回首页重新导航
+        </div>
+        <!-- 可将 href 属性改为你的网站首页地址 -->
+        <a href="/" class="back-home">返回首页</a>
+    </div>
+</body>
+</html>

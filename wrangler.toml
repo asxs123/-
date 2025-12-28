@@ -1,0 +1,9 @@
+name = "my-awesome-website"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+
+# 核心配置：指定静态资源目录
+[assets]
+directory = "./dist"
+# 如果是SPA应用，开启这个选项
+# not_found_handling = "single-page-application"
