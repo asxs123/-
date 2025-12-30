@@ -1,0 +1,340 @@
+{
+  "sites": [
+    {
+      "key": "豆瓣",
+      "name": "豆瓣┃推荐",
+      "type": 3,
+      "api": "csp_Douban",
+      "searchable": 0,
+      "quickSearch": 0,
+      "filterable": 1
+    },
+    {
+      "key": "Aid",
+      "name": "急救┃教学",
+      "type": 3,
+      "api": "csp_FirstAid",
+      "searchable": 0,
+      "quickSearch": 0,
+      "filterable": 0,
+      "changeable": 0,
+      "style": {
+        "type": "rect",
+        "ratio": 3.8
+      }
+    },
+    {
+      "key": "IQIYI",
+      "name": "IQIYI┃官源",
+      "type": 3,
+      "api": "csp_IQIYI",
+      "searchable": 1,
+      "quickSearch": 1,
+      "filterable": 0
+    },
+    {
+      "key": "MGTV",
+      "name": "MGTV┃官源",
+      "type": 3,
+      "api": "csp_MGTV",
+      "searchable": 1,
+      "quickSearch": 1,
+      "filterable": 0
+    },
+    {
+      "key": "360",
+      "name": "360┃官源",
+      "type": 3,
+      "api": "csp_SP360",
+      "searchable": 1,
+      "quickSearch": 1,
+      "filterable": 0
+    },
+    {
+      "key": "hipy_js_荐片",
+      "name": "荐片┃影视(drpy_t3)",
+      "type": 3,
+      "api": "http://192.168.1.7:8001/mytvbox/libs/drpy2.js",
+      "searchable": 0,
+      "quickSearch": 1,
+      "filterable": 1,
+      "order_num": 0,
+      "ext": "http://192.168.1.7:8001/mytvbox/js/荐片.js"
+    },
+    {
+      "key": "hipy_js_柯南影视",
+      "name": "柯南影视┃影视(drpy_t3)",
+      "type": 3,
+      "api": "http://192.168.1.7:8001/mytvbox/libs/drpy2.js",
+      "searchable": 0,
+      "quickSearch": 1,
+      "filterable": 1,
+      "order_num": 0,
+      "ext": "http://192.168.1.7:8001/mytvbox/js/柯南影视.js"
+    },
+    {
+      "key": "hipy_js_流光4K",
+      "name": "流光4K┃影视(drpy_t3)",
+      "type": 3,
+      "api": "http://192.168.1.7:8001/mytvbox/libs/drpy2.js",
+      "searchable": 0,
+      "quickSearch": 1,
+      "filterable": 1,
+      "order_num": 0,
+      "ext": "http://192.168.1.7:8001/mytvbox/js/流光4K.js"
+    },
+    {
+      "key": "hipy_js_HBOTTV",
+      "name": "HBOTTV┃影视(drpy_t3)",
+      "type": 3,
+      "api": "http://192.168.1.7:8001/mytvbox/libs/drpy2.js",
+      "searchable": 0,
+      "quickSearch": 1,
+      "filterable": 1,
+      "order_num": 0,
+      "ext": "http://192.168.1.7:8001/mytvbox/js/HBOTTV.js"
+    },
+    {
+      "key": "hipy_js_厂长影视",
+      "name": "厂长影视┃影视┃无搜索(drpy_t3)",
+      "type": 3,
+      "api": "http://192.168.1.7:8001/mytvbox/libs/drpy2.js",
+      "searchable": 0,
+      "quickSearch": 1,
+      "filterable": 1,
+      "order_num": 0,
+      "ext": "http://192.168.1.7:8001/mytvbox/js/厂长影视.js"
+    },
+    {
+      "key": "hipy_js_看看屋",
+      "name": "看看屋┃影视(drpy_t3)",
+      "type": 3,
+      "api": "http://192.168.1.7:8001/mytvbox/libs/drpy2.js",
+      "searchable": 0,
+      "quickSearch": 1,
+      "filterable": 1,
+      "order_num": 0,
+      "ext": "http://192.168.1.7:8001/mytvbox/js/看看屋.js"
+    },
+    {
+      "key": "hipy_js_水晶影院",
+      "name": "水晶影院┃影视(drpy_t3)",
+      "type": 3,
+      "api": "http://192.168.1.7:8001/mytvbox/libs/drpy2.js",
+      "searchable": 0,
+      "quickSearch": 1,
+      "filterable": 1,
+      "order_num": 0,
+      "ext": "http://192.168.1.7:8001/mytvbox/js/水晶影院.js"
+    },
+    {
+      "key": "hipy_js_小苹果",
+      "name": "小苹果┃影视(drpy_t3)",
+      "type": 3,
+      "api": "http://192.168.1.7:8001/mytvbox/libs/drpy2.js",
+      "searchable": 1,
+      "quickSearch": 1,
+      "filterable": 1,
+      "order_num": 0,
+      "ext": "http://192.168.1.7:8001/mytvbox/js/小苹果.js"
+    }
+  ],
+  "lives": [
+    {
+      "name": "mytv",
+      "type": 0,
+      "url": "http://zjl.iptv.ltzy.top/txt",
+      "playerType": 1,
+      "epg": "http://epg.51zmt.top:8000/api/diyp/?ch={name}&date={date}",
+      "logo": "https://live.fanmingming.com/tv/{name}.png"
+    },
+    {
+      "name": "mytv",
+      "type": 0,
+      "url": "http://zjl.iptv.ltzy.top",
+      "playerType": 1
+    }
+  ],
+  "parses": [
+    {
+      "name": "PlayerJy",
+      "type": 1,
+      "url": "https://json-vipjx.952707.xyz/?url="
+    },
+    {
+      "name": "自建解析",
+      "type": 1,
+      "url": "http://jx.dedyn.io/?url="
+    },
+    {
+      "name": "自建解析2",
+      "type": 1,
+      "url": "http://jx.dedyn.io/jx.php?url=",
+      "ext": {
+        "flag": [
+          "qiyi",
+          "爱奇艺",
+          "奇艺",
+          "youku",
+          "优酷",
+          "qq",
+          "腾讯",
+          "mgtv",
+          "芒果",
+          "imgo"
+        ]
+      }
+    },
+    {
+      "name": "小红播放器",
+      "type": 0,
+      "url": "https://www.xiaohys.com/static/player/artplayer.html?url=",
+      "ext": {
+        "flag": [
+          "qiyi",
+          "爱奇艺",
+          "奇艺",
+          "youku",
+          "优酷",
+          "qq",
+          "腾讯",
+          "mgtv",
+          "芒果",
+          "imgo"
+        ]
+      }
+    },
+    {
+      "name": "剧梦屋解析",
+      "type": 0,
+      "url": "https://play.jumeng.click/?url="
+    },
+    {
+      "name": "爱看解析",
+      "type": 0,
+      "url": "https://www.zab09.vip/?url="
+    },
+    {
+      "name": "巧记(实际150.138.78.37)",
+      "type": 1,
+      "url": "https://zy.qiaoji8.com/gouzi.php?url="
+    },
+    {
+      "name": "巧记(实际火花)",
+      "type": 1,
+      "url": "https://zy.qiaoji8.com/neibu.php?url="
+    },
+    {
+      "name": "qq1080",
+      "type": 1,
+      "url": "http://110.40.40.242:7920/qq1080.php?url=",
+      "ext": {
+        "flag": [
+          "qq",
+          "腾讯"
+        ]
+      }
+    },
+    {
+      "name": "乐看播放器",
+      "type": 0,
+      "url": "https://bfq.weis.vip/player/?url=",
+      "ext": {
+        "flag": [
+          "qiyi",
+          "爱奇艺",
+          "奇艺",
+          "youku",
+          "优酷",
+          "qq",
+          "腾讯",
+          "mgtv",
+          "芒果",
+          "imgo"
+        ]
+      }
+    },
+    {
+      "name": "魔法解析",
+      "type": 0,
+      "url": "https://player.q168.vip/?url="
+    },
+    {
+      "name": "老泰",
+      "type": 1,
+      "url": "http://45.207.197.204/qq.php?url="
+    }
+  ],
+  "flags": [
+    "youku",
+    "qq",
+    "iqiyi",
+    "qiyi",
+    "letv",
+    "sohu",
+    "tudou",
+    "pptv",
+    "mgtv",
+    "wasu"
+  ],
+  "ads": [
+    "mimg.0c1q0l.cn",
+    "www.googletagmanager.com",
+    "www.google-analytics.com",
+    "mc.usihnbcq.cn",
+    "mg.g1mm3d.cn",
+    "mscs.svaeuzh.cn",
+    "cnzz.hhttm.top",
+    "tp.vinuxhome.com",
+    "cnzz.mmstat.com",
+    "www.baihuillq.com",
+    "s23.cnzz.com",
+    "z3.cnzz.com",
+    "c.cnzz.com",
+    "stj.v1vo.top",
+    "z12.cnzz.com",
+    "img.mosflower.cn",
+    "tips.gamevvip.com",
+    "ehwe.yhdtns.com",
+    "xdn.cqqc3.com",
+    "www.jixunkyy.cn",
+    "sp.chemacid.cn",
+    "hm.baidu.com",
+    "s9.cnzz.com",
+    "z6.cnzz.com",
+    "um.cavuc.com",
+    "mav.mavuz.com",
+    "wofwk.aoidf3.com",
+    "z5.cnzz.com",
+    "xc.hubeijieshikj.cn",
+    "tj.tianwenhu.com",
+    "xg.gars57.cn",
+    "k.jinxiuzhilv.com",
+    "cdn.bootcss.com",
+    "ppl.xunzhuo123.com",
+    "xomk.jiangjunmh.top",
+    "img.xunzhuo123.com",
+    "z1.cnzz.com",
+    "s13.cnzz.com",
+    "xg.huataisangao.cn",
+    "z7.cnzz.com",
+    "xg.huataisangao.cn",
+    "z2.cnzz.com",
+    "s96.cnzz.com",
+    "q11.cnzz.com",
+    "thy.dacedsfa.cn",
+    "xg.whsbpw.cn",
+    "s19.cnzz.com",
+    "z8.cnzz.com",
+    "s4.cnzz.com",
+    "f5w.as12df.top",
+    "ae01.alicdn.com",
+    "www.92424.cn",
+    "k.wudejia.com",
+    "vivovip.mmszxc.top",
+    "qiu.xixiqiu.com",
+    "cdnjs.hnfenxun.com",
+    "cms.qdwght.com"
+  ],
+  "spider": "http://192.168.1.7:8001/mytvbox/custom_spider.jar;md5;ac6a7a40f20986aeef66485628012766"
+}

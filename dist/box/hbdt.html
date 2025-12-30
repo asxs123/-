@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>题目提取与答案匹配工具</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+    
+    <!-- 自定义样式 -->
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .card-shadow {
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            }
+            .btn-hover {
+                @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5;
+            }
+            .input-focus {
+                @apply focus:ring-2 focus:ring-blue-500 focus:border-transparent;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- 顶部导航 -->
+    <header class="bg-white shadow-sm sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center">
+            <div class="flex items-center mb-4 md:mb-0">
+                <i class="fa fa-file-text-o text-blue-600 text-2xl mr-3"></i>
+                <h1 class="text-xl md:text-2xl font-bold text-gray-800">题目提取与答案匹配工具</h1>
+            </div>
+            <div class="flex space-x-3">
+                <button id="downloadTemplateBtn" class="bg-green-600 text-white px-4 py-2 rounded-lg btn-hover flex items-center">
+                    <i class="fa fa-download mr-2"></i>Excel题库模板
+                </button>
+                <button id="clearAllBtn" class="bg-red-500 text-white px-4 py-2 rounded-lg btn-hover flex items-center">
+                    <i class="fa fa-trash mr-2"></i>清空
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="container mx-auto px-4 py-8">
+        <!-- 操作区域 -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- JSON输入区域 -->
+            <div class="bg-white rounded-xl p-6 card-shadow">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                    <i class="fa fa-code text-blue-500 mr-2"></i>JSON题目数据输入
+                </h2>
+                <div class="space-y-4">
+                    <textarea 
+                        id="jsonInput" 
+                        class="w-full h-64 p-4 border border-gray-300 rounded-lg input-focus resize-y"
+                        placeholder="请粘贴包含questionList的JSON文本（支持完整JSON或直接粘贴questionList数组）..."
+                    ></textarea>
+                    <button id="extractQuestionsBtn" class="w-full bg-blue-600 text-white py-3 rounded-lg btn-hover flex items-center justify-center">
+                        <i class="fa fa-magic mr-2"></i>提取题目
+                    </button>
+                </div>
+            </div>
+
+            <!-- Excel上传区域 -->
+            <div class="bg-white rounded-xl p-6 card-shadow">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                    <i class="fa fa-file-excel-o text-green-500 mr-2"></i>Excel题库上传
+                </h2>
+                <div class="space-y-4">
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-500 transition-colors">
+                        <i class="fa fa-cloud-upload text-4xl text-gray-400 mb-3"></i>
+                        <p class="text-gray-600 mb-4">拖拽Excel文件到此处或点击选择文件</p>
+                        <input 
+                            type="file" 
+                            id="excelUpload" 
+                            accept=".xlsx,.xls"
+                            class="hidden"
+                        />
+                        <label for="excelUpload" class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg cursor-pointer hover:bg-gray-200 transition-colors">
+                            选择Excel文件
+                        </label>
+                    </div>
+                    <div id="excelUploadStatus" class="text-sm text-gray-500 hidden">
+                        <i class="fa fa-check-circle text-green-500 mr-1"></i>
+                        <span>已上传：<span id="excelFileName">无</span></span>
+                    </div>
+                    <button id="matchAnswersBtn" class="w-full bg-green-600 text-white py-3 rounded-lg btn-hover flex items-center justify-center" disabled>
+                        <i class="fa fa-search mr-2"></i>匹配答案（需先提取题目和上传题库）
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 结果显示区域 -->
+        <div class="bg-white rounded-xl p-6 card-shadow mb-8">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-lg font-semibold text-gray-800 flex items-center">
+                    <i class="fa fa-list-alt text-purple-500 mr-2"></i>题目与答案结果
+                </h2>
+                <div class="flex space-x-2">
+                    <button id="copyAllBtn" class="bg-purple-600 text-white px-4 py-2 rounded-lg btn-hover flex items-center" disabled>
+                        <i class="fa fa-copy mr-2"></i>复制所有
+                    </button>
+                    <button id="exportResultBtn" class="bg-orange-600 text-white px-4 py-2 rounded-lg btn-hover flex items-center" disabled>
+                        <i class="fa fa-file-excel-o mr-2"></i>导出结果
+                    </button>
+                </div>
+            </div>
+            <div id="resultEmptyState" class="py-16 text-center text-gray-500">
+                <i class="fa fa-file-text-o text-4xl mb-3"></i>
+                <p>暂无结果，请先提取题目并匹配答案</p>
+            </div>
+            <div id="resultList" class="hidden">
+                <div class="space-y-6" id="questionAnswerContainer">
+                    <!-- 题目与答案会动态插入此处 -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 底部信息 -->
+    <footer class="bg-gray-800 text-white py-6">
+        <div class="container mx-auto px-4 text-center text-sm">
+            <p>© 2025 安全知识题目工具 | 支持JSON提取、Excel匹配、答案复制</p>
+            <p class="mt-2 text-gray-400">Excel题库模板格式：题目列（必填）、答案列（必填）、题型列（可选：单选/多选/判断/填空）</p>
+        </div>
+    </footer>
+
+    <!-- 复制成功提示 -->
+    <div id="copyToast" class="fixed bottom-6 right-6 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg transform translate-y-20 opacity-0 transition-all duration-300 flex items-center">
+        <i class="fa fa-check mr-2"></i>
+        <span>复制成功！</span>
+    </div>
+
+    <script>
+        // 全局状态管理
+        const state = {
+            extractedQuestions: [], // 提取的题目列表
+            excelData: null, // Excel题库数据
+            matchedResults: [], // 匹配后的结果
+            excelFileName: '' // 上传的Excel文件名
+        };
+
+        // DOM元素
+        const elements = {
+            jsonInput: document.getElementById('jsonInput'),
+            extractQuestionsBtn: document.getElementById('extractQuestionsBtn'),
+            excelUpload: document.getElementById('excelUpload'),
+            excelUploadStatus: document.getElementById('excelUploadStatus'),
+            excelFileName: document.getElementById('excelFileName'),
+            matchAnswersBtn: document.getElementById('matchAnswersBtn'),
+            clearAllBtn: document.getElementById('clearAllBtn'),
+            downloadTemplateBtn: document.getElementById('downloadTemplateBtn'),
+            resultEmptyState: document.getElementById('resultEmptyState'),
+            resultList: document.getElementById('resultList'),
+            questionAnswerContainer: document.getElementById('questionAnswerContainer'),
+            copyAllBtn: document.getElementById('copyAllBtn'),
+            exportResultBtn: document.getElementById('exportResultBtn'),
+            copyToast: document.getElementById('copyToast')
+        };
+
+        // 初始化前检查XLSX是否加载成功
+        function checkXLSXLoaded() {
+            if (typeof XLSX === 'undefined') {
+                console.error('XLSX库加载失败，正在尝试备用CDN...');
+                // 动态加载备用CDN
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+                script.onload = init;
+                script.onerror = function() {
+                    alert('Excel处理库加载失败，部分功能无法使用！请检查网络连接或刷新页面重试。');
+                    init(); // 继续初始化其他功能
+                };
+                document.head.appendChild(script);
+            } else {
+                init();
+            }
+        }
+
+        // 初始化
+        function init() {
+            // 绑定事件监听
+            bindEventListeners();
+            // 填充示例JSON（可选）
+            setSampleJson();
+        }
+
+        // 设置示例JSON
+        function setSampleJson() {
+            const sampleJson = JSON.stringify({
+                "questionList": [
+                    {
+                        "question": "安全生产“两个根本”的核心要求是（）？",
+                        "guid": "aabdc74b53c1dffaa6ac36772fc05f2f",
+                        "rightCount": 1,
+                        "questionMode": "1",
+                        "result": [
+                            {"pos": "1", "value": "从根本上消除隐患、从根本上解决问题", "answerExplain": ""},
+                            {"pos": "2", "value": "从根本上优化标准、从根本上合理投入", "answerExplain": ""},
+                            {"pos": "3", "value": "从根本上规范流程、从根本上管控风险", "answerExplain": ""},
+                            {"pos": "4", "value": "从根本上强化监管、从根本上压实责任", "answerExplain": ""}
+                        ]
+                    },
+                    {
+                        "question": "安全生产“三个责任”包括企业主体责任、部门监管责任、_____。",
+                        "guid": "df4fef3477c014ef18fd23a133fb3c0e",
+                        "rightCount": 1,
+                        "questionMode": "3",
+                        "result": [{"pos": "1", "value": "", "answerExplain": ""}]
+                    }
+                ]
+            }, null, 2);
+            elements.jsonInput.value = sampleJson;
+        }
+
+        // 绑定事件监听
+        function bindEventListeners() {
+            // 提取题目按钮
+            elements.extractQuestionsBtn.addEventListener('click', extractQuestions);
+            
+            // Excel上传
+            elements.excelUpload.addEventListener('change', handleExcelUpload);
+            
+            // 匹配答案按钮
+            elements.matchAnswersBtn.addEventListener('click', matchAnswers);
+            
+            // 清空按钮
+            elements.clearAllBtn.addEventListener('click', clearAll);
+            
+            // 下载模板按钮
+            elements.downloadTemplateBtn.addEventListener('click', downloadExcelTemplate);
+            
+            // 复制所有按钮
+            elements.copyAllBtn.addEventListener('click', copyAllResults);
+            
+            // 导出结果按钮
+            elements.exportResultBtn.addEventListener('click', exportResults);
+        }
+
+        // 提取题目
+        function extractQuestions() {
+            try {
+                const jsonText = elements.jsonInput.value.trim();
+                if (!jsonText) {
+                    alert('请输入JSON文本');
+                    return;
+                }
+
+                // 解析JSON
+                let jsonData;
+                try {
+                    jsonData = JSON.parse(jsonText);
+                } catch (e) {
+                    alert('JSON格式错误，请检查后重试');
+                    return;
+                }
+
+                // 提取questionList（支持完整JSON或直接传入questionList数组）
+                let questionList;
+                if (Array.isArray(jsonData)) {
+                    questionList = jsonData;
+                } else if (jsonData.data && Array.isArray(jsonData.data.questionList)) {
+                    questionList = jsonData.data.questionList;
+                } else if (Array.isArray(jsonData.questionList)) {
+                    questionList = jsonData.questionList;
+                } else {
+                    alert('未找到questionList数组，请检查JSON结构');
+                    return;
+                }
+
+                // 过滤有效题目并提取关键信息
+                const validQuestions = questionList
+                    .filter(q => q.question && q.result && Array.isArray(q.result))
+                    .map((q, index) => ({
+                        id: index + 1,
+                        question: q.question.trim(),
+                        questionMode: q.questionMode || '1', // 1-单选/多选，2-判断，3-填空
+                        rightCount: q.rightCount || 1,
+                        options: q.result.map(opt => ({
+                            pos: opt.pos,
+                            value: opt.value || '',
+                            answerExplain: opt.answerExplain || ''
+                        })),
+                        answer: '' // 预留答案字段
+                    }));
+
+                if (validQuestions.length === 0) {
+                    alert('未提取到有效题目');
+                    return;
+                }
+
+                // 更新状态
+                state.extractedQuestions = validQuestions;
+                alert(`成功提取 ${validQuestions.length} 道题目`);
+                
+                // 更新按钮状态
+                updateButtonStates();
+            } catch (error) {
+                console.error('提取题目失败：', error);
+                alert('提取题目时发生错误，请重试');
+            }
+        }
+
+        // 处理Excel上传
+        function handleExcelUpload(e) {
+            if (typeof XLSX === 'undefined') {
+                alert('Excel处理库未加载成功，无法上传文件！');
+                return;
+            }
+
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // 验证文件类型
+            const fileExt = file.name.split('.').pop().toLowerCase();
+            if (!['xlsx', 'xls'].includes(fileExt)) {
+                alert('请上传Excel文件（.xlsx或.xls格式）');
+                return;
+            }
+
+            // 读取Excel文件
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+
+                    // 获取第一个工作表
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+
+                    // 转换为JSON
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+                    if (jsonData.length === 0) {
+                        alert('Excel文件中未找到数据');
+                        return;
+                    }
+
+                    // 验证Excel格式（必须包含题目列和答案列）
+                    const requiredColumns = ['题目', '答案'];
+                    const firstRowKeys = Object.keys(jsonData[0]).map(key => key.trim());
+                    const missingColumns = requiredColumns.filter(col => !firstRowKeys.includes(col));
+
+                    if (missingColumns.length > 0) {
+                        alert(`Excel文件缺少必要列：${missingColumns.join('、')}\n请使用模板文件格式`);
+                        return;
+                    }
+
+                    // 格式化Excel数据（去除空格，标准化）
+                    state.excelData = jsonData.map(item => ({
+                        question: (item['题目'] || '').trim(),
+                        // answer: (item['答案'] || '').trim(),
+                        answer: (String(item['答案'] || '')).trim(),
+                        type: (item['题型'] || '').trim().toLowerCase()
+                    })).filter(item => item.question && item.answer);
+
+                    // 更新状态
+                    state.excelFileName = file.name;
+                    elements.excelFileName.textContent = file.name;
+                    elements.excelUploadStatus.classList.remove('hidden');
+                    
+                    // 重置文件输入，允许重新上传同一文件
+                    elements.excelUpload.value = '';
+
+                    alert(`成功读取 ${state.excelData.length} 条题库数据`);
+                    
+                    // 更新按钮状态
+                    updateButtonStates();
+                } catch (error) {
+                    console.error('读取Excel失败：', error);
+                    alert('读取Excel文件时发生错误，请重试');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // 匹配答案
+        function matchAnswers() {
+            try {
+                const { extractedQuestions, excelData } = state;
+                if (extractedQuestions.length === 0) {
+                    alert('请先提取题目');
+                    return;
+                }
+                if (!excelData || excelData.length === 0) {
+                    alert('请先上传有效的Excel题库');
+                    return;
+                }
+
+                // 匹配逻辑：基于题目文本相似度匹配（可根据需求优化）
+                const matchedResults = extractedQuestions.map(question => {
+                    // 简单匹配：完全匹配题目文本（可优化为模糊匹配）
+                    const matchedItem = excelData.find(item => 
+                        item.question === question.question
+                    );
+
+                    return {
+                        ...question,
+                        answer: matchedItem ? matchedItem.answer : '未找到匹配答案',
+                        isAnswerFound: !!matchedItem
+                    };
+                });
+
+                // 更新状态
+                state.matchedResults = matchedResults;
+                
+                // 显示结果
+                renderResults();
+                
+                // 更新按钮状态
+                updateButtonStates();
+            } catch (error) {
+                console.error('匹配答案失败：', error);
+                alert('匹配答案时发生错误，请重试');
+            }
+        }
+
+        // 渲染结果
+        function renderResults() {
+            const { matchedResults } = state;
+            if (matchedResults.length === 0) {
+                elements.resultEmptyState.classList.remove('hidden');
+                elements.resultList.classList.add('hidden');
+                return;
+            }
+
+            // 隐藏空状态，显示结果列表
+            elements.resultEmptyState.classList.add('hidden');
+            elements.resultList.classList.remove('hidden');
+
+            // 清空容器
+            elements.questionAnswerContainer.innerHTML = '';
+
+            // 渲染每道题
+            matchedResults.forEach((item, index) => {
+                const questionCard = document.createElement('div');
+                questionCard.className = 'border-b border-gray-100 pb-4 last:border-0 last:pb-0';
+
+                // 题目类型标签
+                let typeLabel = '';
+                switch(item.questionMode) {
+                    case '1':
+                        typeLabel = item.rightCount > 1 ? '多选题' : '单选题';
+                        break;
+                    case '2':
+                        typeLabel = '判断题';
+                        break;
+                    case '3':
+                        typeLabel = '填空题';
+                        break;
+                    default:
+                        typeLabel = '未知题型';
+                }
+
+                // 构建题目HTML
+                let questionHtml = `
+                    <div class="flex items-start mb-2">
+                        <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded mr-2 mt-0.5">${typeLabel}</span>
+                        <h3 class="text-gray-800 font-medium">${item.id}. ${item.question}</h3>
+                    </div>
+                `;
+
+                // 渲染选项（非填空题显示选项）
+                if (item.questionMode !== '3') {
+                    questionHtml += `
+                        <div class="ml-8 mb-3 space-y-1">
+                            ${item.options.map(opt => `
+                                <div class="text-gray-600 text-sm">
+                                    <span class="inline-block w-6 font-medium">${String.fromCharCode(64 + parseInt(opt.pos))}.</span>
+                                    ${opt.value}
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                }
+
+                // 渲染答案
+                const answerClass = item.isAnswerFound ? 'text-green-600' : 'text-red-500';
+                let answerHtml = `
+                    <div class="ml-8">
+                        <span class="text-gray-500 font-medium">答案：</span>
+                        <span class="${answerClass} font-medium">${item.answer}</span>
+                `;
+
+                // 填空题添加复制按钮
+                if (item.questionMode === '3' && item.isAnswerFound) {
+                    answerHtml += `
+                        <button class="ml-2 text-blue-500 hover:text-blue-700 transition-colors copy-answer-btn" data-answer="${item.answer}">
+                            <i class="fa fa-copy mr-1"></i>复制
+                        </button>
+                    `;
+                }
+
+                answerHtml += `</div>`;
+
+                // 组合完整HTML
+                questionCard.innerHTML = questionHtml + answerHtml;
+
+                // 添加到容器
+                elements.questionAnswerContainer.appendChild(questionCard);
+            });
+
+            // 绑定填空题复制按钮事件
+            document.querySelectorAll('.copy-answer-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const answer = this.getAttribute('data-answer');
+                    copyToClipboard(answer);
+                    showCopyToast();
+                });
+            });
+        }
+
+        // 下载Excel模板
+        function downloadExcelTemplate() {
+            if (typeof XLSX === 'undefined') {
+                alert('Excel处理库未加载成功，无法下载模板！');
+                return;
+            }
+
+            // 创建模板数据
+            const templateData = [
+                {
+                    '题目': '安全生产“两个根本”的核心要求是（）？',
+                    '答案': '从根本上消除隐患、从根本上解决问题',
+                    '题型': '单选题'
+                },
+                {
+                    '题目': '安全生产“三个责任”包括企业主体责任、部门监管责任、_____。',
+                    '答案': '政府领导责任',
+                    '题型': '填空题'
+                },
+                {
+                    '题目': '《“十四五”国家应急体系规划》要求到2025年应急管理体系现代化取得重大进展。（）',
+                    '答案': '对',
+                    '题型': '判断题'
+                },
+                {
+                    '题目': '发现室内燃气泄漏后应采取的措施包括（）？',
+                    '答案': '关闭燃气阀门、通风换气、禁用电器设备、撤离现场并报警',
+                    '题型': '多选题'
+                }
+            ];
+
+            // 创建工作簿和工作表
+            const workbook = XLSX.utils.book_new();
+            const worksheet = XLSX.utils.json_to_sheet(templateData);
+
+            // 添加工作表到工作簿
+            XLSX.utils.book_append_sheet(workbook, worksheet, '题库模板');
+
+            // 下载文件
+            XLSX.writeFile(workbook, '题库模板.xlsx');
+        }
+
+        // 复制到剪贴板
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).catch(err => {
+                console.error('复制失败：', err);
+                alert('复制失败，请手动复制');
+            });
+        }
+
+        // 显示复制成功提示
+        function showCopyToast() {
+            elements.copyToast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                elements.copyToast.classList.add('translate-y-20', 'opacity-0');
+            }, 2000);
+        }
+
+        // 复制所有结果
+        function copyAllResults() {
+            const { matchedResults } = state;
+            if (matchedResults.length === 0) return;
+
+            // 构建复制文本
+            const copyText = matchedResults.map(item => {
+                let text = `${item.id}. ${item.question}\n`;
+                
+                // 非填空题添加选项
+                if (item.questionMode !== '3') {
+                    item.options.forEach(opt => {
+                        text += `  ${String.fromCharCode(64 + parseInt(opt.pos))}. ${opt.value}\n`;
+                    });
+                }
+                
+                text += `  答案：${item.answer}\n\n`;
+                return text;
+            }).join('');
+
+            copyToClipboard(copyText);
+            showCopyToast();
+        }
+
+        // 导出结果
+        function exportResults() {
+            if (typeof XLSX === 'undefined') {
+                alert('Excel处理库未加载成功，无法导出结果！');
+                return;
+            }
+
+            const { matchedResults } = state;
+            if (matchedResults.length === 0) return;
+
+            // 准备导出数据
+            const exportData = matchedResults.map(item => ({
+                '题号': item.id,
+                '题目': item.question,
+                '题型': item.questionMode === '1' ? (item.rightCount > 1 ? '多选题' : '单选题') :
+                        item.questionMode === '2' ? '判断题' : '填空题',
+                '选项': item.questionMode !== '3' ? 
+                    item.options.map(opt => `${String.fromCharCode(64 + parseInt(opt.pos))}. ${opt.value}`).join('；') :
+                    '无',
+                '答案': item.answer,
+                '匹配状态': item.isAnswerFound ? '已匹配' : '未匹配'
+            }));
+
+            // 创建工作簿和工作表
+            const workbook = XLSX.utils.book_new();
+            const worksheet = XLSX.utils.json_to_sheet(exportData);
+
+            // 添加工作表到工作簿
+            XLSX.utils.book_append_sheet(workbook, worksheet, '题目答案结果');
+
+            // 下载文件
+            XLSX.writeFile(workbook, '题目答案结果.xlsx');
+        }
+
+        // 清空所有数据
+        function clearAll() {
+            // 重置状态
+            state.extractedQuestions = [];
+            state.excelData = null;
+            state.matchedResults = [];
+            state.excelFileName = '';
+
+            // 重置UI
+            elements.jsonInput.value = '';
+            elements.excelUploadStatus.classList.add('hidden');
+            elements.excelFileName.textContent = '无';
+            elements.excelUpload.value = '';
+            
+            elements.resultEmptyState.classList.remove('hidden');
+            elements.resultList.classList.add('hidden');
+            elements.questionAnswerContainer.innerHTML = '';
+
+            // 更新按钮状态
+            updateButtonStates();
+        }
+
+        // 更新按钮状态
+        function updateButtonStates() {
+            const hasQuestions = state.extractedQuestions.length > 0;
+            const hasExcelData = !!state.excelData && state.excelData.length > 0;
+            const hasResults = state.matchedResults.length > 0;
+
+            // 匹配答案按钮：需要同时有题目和Excel数据
+            elements.matchAnswersBtn.disabled = !(hasQuestions && hasExcelData);
+            
+            // 复制所有和导出按钮：需要有匹配结果
+            elements.copyAllBtn.disabled = !hasResults;
+            elements.exportResultBtn.disabled = !hasResults;
+
+            // 更新匹配按钮文本
+            if (hasQuestions && hasExcelData) {
+                elements.matchAnswersBtn.innerHTML = '<i class="fa fa-search mr-2"></i>匹配答案（已准备就绪）';
+            } else {
+                elements.matchAnswersBtn.innerHTML = '<i class="fa fa-search mr-2"></i>匹配答案（需先提取题目和上传题库）';
+            }
+        }
+
+        // 初始化应用
+        // window.addEventListener('DOMContentLoaded', init);
+        window.addEventListener('DOMContentLoaded', checkXLSXLoaded);
+    </script>
+</body>
+</html>
