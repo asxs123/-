@@ -98,6 +98,17 @@
       "ext": "./js/荐片[优].js"
     },
     {
+      "key": "drpy_js_默片记",
+      "name": "默片记┃影视(drpy_t3)",
+      "type": 3,
+      "api": "./libs/drpy2.js",
+      "searchable": 1,
+      "quickSearch": 1,
+      "filterable": 1,
+      "order_num": 0,
+      "ext": "./js/默片记.js"
+    },
+    {
       "key": "drpy_js_玖月影视",
       "name": "玖月影视┃影视(drpy_t3)",
       "type": 3,
@@ -120,17 +131,6 @@
       "ext": "./js/泥视频.js"
     },
     {
-      "key": "drpy_js_千千影视",
-      "name": "千千影视┃影视(drpy_t3)",
-      "type": 3,
-      "api": "./libs/drpy2.js",
-      "searchable": 1,
-      "quickSearch": 1,
-      "filterable": 1,
-      "order_num": 0,
-      "ext": "./js/千千影视.js"
-    },
-    {
       "key": "drpy_js_毒舌影视",
       "name": "毒舌影视┃影视(drpy_t3)",
       "type": 3,
@@ -140,17 +140,6 @@
       "filterable": 1,
       "order_num": 0,
       "ext": "./js/毒舌影视.js"
-    },
-    {
-      "key": "drpy_js_水晶影院",
-      "name": "水晶影院┃影视(drpy_t3)",
-      "type": 3,
-      "api": "./libs/drpy2.js",
-      "searchable": 1,
-      "quickSearch": 1,
-      "filterable": 1,
-      "order_num": 0,
-      "ext": "./js/水晶影院.js"
     },
     {
       "key": "drpy_js_爱电影",
@@ -175,19 +164,15 @@
       "ext": "./js/雪糕TV影视.js"
     },
     {
-      "key": "my资源",
-      "name": "my资源",
-      "type": 1,
-      "api": "../macbox/?ac=list",
+      "key": "drpy_js_66大片网",
+      "name": "66大片网┃影视(drpy_t3)",
+      "type": 3,
+      "api": "./libs/drpy2.js",
       "searchable": 1,
       "quickSearch": 1,
-      "categories": [
-        "电影",
-        "电视剧",
-        "综艺",
-        "动漫",
-        "纪录"
-      ]
+      "filterable": 1,
+      "order_num": 0,
+      "ext": "./js/66大片网.js"
     },
     {
       "key": "Anime1",
@@ -255,6 +240,17 @@
       "ext": "./js/小苹果.js"
     },
     {
+      "key": "drpy_js_麦田影院",
+      "name": "麦田影院┃影视(drpy_t3)",
+      "type": 3,
+      "api": "./libs/drpy2.js",
+      "searchable": 1,
+      "quickSearch": 1,
+      "filterable": 1,
+      "order_num": 0,
+      "ext": "./js/麦田影院.js"
+    },
+    {
       "key": "csp_DyGang",
       "name": "电影港┃磁力",
       "type": 3,
@@ -271,56 +267,9 @@
       "searchable": 1,
       "playerType": 1,
       "timeout": 120
-    },
-    {
-      "key": "drpy_js_厂长影视",
-      "name": "厂长影视┃影视┃无搜索(drpy_t3)",
-      "type": 3,
-      "api": "./libs/drpy2.js",
-      "searchable": 0,
-      "quickSearch": 0,
-      "filterable": 1,
-      "order_num": 0,
-      "ext": "./js/厂长影视.js"
-    },
-    {
-      "key": "drpy_js_HBOTTV",
-      "name": "HBOTTV┃影视(drpy_t3)┃首页反爬",
-      "type": 3,
-      "api": "./libs/drpy2.js",
-      "searchable": 1,
-      "quickSearch": 1,
-      "filterable": 1,
-      "order_num": 0,
-      "ext": "./js/HBOTTV.js"
-    },
-    {
-      "key": "drpy_js_麦田影院",
-      "name": "麦田影院┃影视(drpy_t3)|X",
-      "type": 3,
-      "api": "./libs/drpy2.js",
-      "searchable": 1,
-      "quickSearch": 1,
-      "filterable": 1,
-      "order_num": 0,
-      "ext": "./js/麦田影院.js"
     }
   ],
   "lives": [
-    {
-      "name": "mytv",
-      "type": 0,
-      "url": "../iptv-api/txt",
-      "playerType": 1,
-      "epg": "../iptv-api/epg/epg.gz",
-      "logo": "https://gcore.jsdelivr.net/gh/taksssss/tv/icon/{name}.png"
-    },
-    {
-      "name": "mytv2",
-      "type": 0,
-      "url": "../iptv-api/",
-      "playerType": 1
-    },
     {
       "name": "备用1",
       "type": 0,

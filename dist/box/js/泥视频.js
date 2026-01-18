@@ -22,7 +22,24 @@ var rule = {
     4: { cateId: '4' }
   },
   filter: 'H4sIAAAAAAAAE+2W324SQRTG32WvuWBml399A5/BcLHRvVJ70ahJ0zSxJVCgjYpRlBarJrYLFVOIxgjb5WmYXfYtHLqzc85MzIYIFzbh8ny/nZ05w/edZc8gxtb9PeORs2tsGQ/sp869h0bG2LafOLwORx47P+b1c/vxM+f2wW0us2ovqvQWMi+IsZ8RcrM387th40iQPJB2lzVcIAVJwvooqFSBFIG4LTb2gJTgbRdHCiFZiYKD18GLNkLodA1X2YlQWFX/MJs0AFF4YTi5Yv47hJR2w7foGBT6DQ4HYbuFEOzFam+iTh8hE/ZqXof+FUIWvLDSDA5PAVk5QN9P5vVzhOAY4cE0Op0ihO7db4Ue+q0sfvHlBYyNYO84NtiAdYfsZJJuA2jwqxt1akIVRcKiy07w+1owUch1r4bBeJqsiwt52ulLduYLJgrZ/8DlimCikOz9RdAdJCwu5Fk+9eGdopDrfgyBiUKes/pr5rWTc8YFvrpdx95BVzf+OfP8Ja+OZmlOWpDmsG6BbmHdBN3EOgWdYp2ATrCeBT2LdFKSOilhvQh6EesF0AtYz4Oexzr0S3C/BPoluF8C/RLcL4F+F7ku75czBl1xsKHMnvmzicsHSDI6YGvuYO5VhCxsPqTnFONJ3TQ1I6MlecWPsARt0R5G/QFCOc2mgBZ2WlPAa1X+fBKAuFgmVP8a/rQQpw6GlBDPj0fARIEulTU/s49fkqWy3oyAOzYCzBVHgKmZPvRu5o1Jsk9BmwIqLWoGVmlJi4xCzbw2FFSa1fLPva0+UNCcqtL1felTBkF8I0mC4gLdB28aAr0oUr/mm2j9f9GyVowW7Cu+rs1ecPMt8SjRwqNSqoVHpSXNhAq1/hIe9QGieVGlVIuWSs21Rev2TpJoxcUy38O0P8Obr9adiNb+H+y4L6eTDwAA',
-  lazy: "js:\n  input = { parse: 1, url: input, js: '' };",
+  lazy: $js.toString(() => {
+    let html = request(input);
+    let match = html.match(/var player_.*?=(.*?)<\/script>/);
+    if (match?.[1]) {
+      let kcode = JSON.parse(match[1]);
+      let kurl = kcode.url;
+      if (kcode.encrypt == '1') {
+        kurl = unescape(kurl);
+      } else if (kcode.encrypt == '2') {
+        kurl = unescape(base64Decode(kurl));
+      }
+      if (/\.(m3u8|mp4)/.test(kurl)) {
+        input = kurl
+      }
+    } else {
+      input
+    };
+  }),
   推荐: 'a:has(.lazyload);a&&title;.lazyload&&data-original;.module-item-note&&Text;a&&href',
   一级: 'a:has(.lazyload);a&&title;.lazyload&&data-original;.module-item-note&&Text;a&&href',
   二级: {
@@ -37,16 +54,16 @@ var rule = {
     list_url: 'a&&href',
   },
   搜索: $js.toString(() => {
-        let data = JSON.parse(request(input)).list;
-        let d = [];
-        data.forEach(it => {
-            d.push({
-                title: it.name,
-                desc: it.en,
-                img: rule.host + it.pic,
-                url: rule.host + '/nivod/' + it.id
-            });
-        });
-        setResult(d);
-    }),
+    let data = JSON.parse(request(input)).list;
+    let d = [];
+    data.forEach(it => {
+      d.push({
+        title: it.name,
+        desc: it.en,
+        img: rule.host + it.pic,
+        url: rule.host + '/nivod/' + it.id
+      });
+    });
+    setResult(d);
+  }),
 }

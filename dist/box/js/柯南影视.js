@@ -129,15 +129,16 @@ var rule = {
   lazy: $js.toString(() => {
     try {
       const html = request(input);
-      const title = pdfh(html, 'title&&Text');
+      const removeSuffix = '-柯南影视-追热播电视剧-看最新电影';
+      const title = pdfh(html, 'title&&Text').replace(removeSuffix, '');
       const player_aaaa = JSON.parse(/var player_aaaa=({[^;]+})/.exec(html)[1]);
-      const parseUrl = `https://yyds.cdnjson.xyz/bfjson.php?url=${player_aaaa.url}&next=//&title=${title}`;
+      const parseUrl = `https://vip.cdnjson.xyz/ppy.php?url=${player_aaaa.url}&next=//&title=${title}`;
       const parseHtml = request(parseUrl);
       const newUrl = /"url":"([^"]*)",/i.exec(parseHtml)[1];
       const pbgjz = /"pbgjz":"([^"]*)",/i.exec(parseHtml)[1];
       const dmkey = /"dmkey":"([^"]*)",/i.exec(parseHtml)[1];
       const key = CryptoJS.SHA256(`${Math.floor(Date.now() / 3600000) * 3600}knvod`).toString(CryptoJS.enc.Hex);
-      const res = JSON.parse(post('https://yyds.cdnjson.xyz/post.php', {
+      const res = JSON.parse(post('https://vip.cdnjson.xyz/kk.php', {
         data: {
           url: newUrl,
           pbgjz,
@@ -146,7 +147,7 @@ var rule = {
         }
       }));
       if (res.knvod) {
-        input = { parse: 0, url: res.knvod, type: res.type }
+        input = { parse: 0, url: res.vip, type: res.type }
       } else {
         input = {
           parse: 1,
