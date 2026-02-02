@@ -13,7 +13,7 @@ var rule = {
         'Sec-Fetch-Site': 'same-origin',
         'Sec-Fetch-Mode': 'cors',
         'Sec-Fetch-Dest': 'empty',
-        'Accept-Encoding': 'gzip, deflate, br, zstd',
+        'Accept-Encoding': 'identity',
         'Accept-Language': 'zh-CN,zh;q=0.9',
         'Connection': 'keep-alive'
     },

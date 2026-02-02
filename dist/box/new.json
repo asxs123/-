@@ -120,6 +120,17 @@
       "ext": "./js/玖月影视.js"
     },
     {
+      "key": "drpy_js_可可影视",
+      "name": "可可影视┃影视(drpy_t3)",
+      "type": 3,
+      "api": "./libs/drpy2.js",
+      "searchable": 1,
+      "quickSearch": 1,
+      "filterable": 1,
+      "order_num": 0,
+      "ext": "./js/可可影视.js"
+    },
+    {
       "key": "drpy_js_泥视频",
       "name": "泥视频┃影视(drpy_t3)",
       "type": 3,
