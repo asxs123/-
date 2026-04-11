@@ -939,10 +939,10 @@
                 if (v !== '' && v != null && parseInt(v, 10) === 0) item.changeable = 0;
 
                 v = $el.find('.quickSearch').val();
-                if (v !== '' && v != null) { if (parseInt(v, 10) === 1) item.quickSearch = 1; }
+                if (v !== '' && v != null) { const num = parseInt(v, 10); if (num === 1) { item.quickSearch = 1; } else if (num === 0) { item.quickSearch = 0; } }
 
                 v = $el.find('.indexs').val();
-                if (v !== '' && v != null) { if (parseInt(v, 10) === 1) item.indexs = 1; }
+                if (v !== '' && v != null) { const num = parseInt(v, 10); if (num === 1) { item.indexs = 1; } else if (num === 0) { item.indexs = 0; } }
 
                 v = $el.find('.categories').val()?.trim();
                 if (v) { var cats = v.split(',').filter(Boolean); if (cats.length) item.categories = cats; }
