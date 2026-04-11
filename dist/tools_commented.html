@@ -1,0 +1,2379 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vod配置可视化编辑器</title>
+    <!-- Bootstrap 5.3 CSS 框架：提供基础的栅格系统、按钮、表单等 UI 组件样式 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- SortableJS：一个轻量级的拖拽排序库，用于实现 Tab 标签页和数组项的拖拽重排 -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <!-- SheetJS (xlsx)：用于 Excel 文件的导入导出，支持 .xlsx / .xls 格式 -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        /*
+         * ==================== CSS 自定义变量（设计令牌 Design Tokens） ====================
+         * 用 CSS 变量统一管理颜色、圆角、阴影等，方便全局修改和主题切换。
+         * 在任意样式中使用 var(--变量名) 即可引用。
+         */
+        :root {
+            --primary: #4f46e5;          /* 主色调（靛蓝色），用于按钮、高亮、焦点等 */
+            --primary-hover: #4338ca;    /* 主色调的 hover 状态，颜色更深 */
+            --success: #059669;          /* 成功色（绿色），用于成功提示 */
+            --success-hover: #047857;
+            --danger: #dc2626;           /* 危险色（红色），用于删除、错误提示 */
+            --danger-hover: #b91c1c;
+            --warning: #d97706;          /* 警告色（橙色），用于 Excel 相关按钮 */
+            --warning-hover: #b45309;
+            --info: #0891b2;             /* 信息色（青色），用于下载等信息类按钮 */
+            --info-hover: #0e7490;
+            --surface: #f8fafc;          /* 浅灰背景色，用于卡片、输入区域的底色 */
+            --border: #e2e8f0;           /* 边框颜色 */
+            --text: #1e293b;             /* 主文字颜色（深灰） */
+            --text-muted: #64748b;       /* 弱化文字颜色，用于辅助说明 */
+            --radius: 8px;               /* 全局圆角大小 */
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, .05);          /* 小阴影 */
+            --shadow: 0 1px 3px rgba(0, 0, 0, .1), 0 1px 2px rgba(0, 0, 0, .06);   /* 标准阴影 */
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, .1), 0 2px 4px -2px rgba(0, 0, 0, .1); /* 中等阴影 */
+            --transition: all .15s ease; /* 全局过渡动画：所有属性变化在 0.15 秒内平滑过渡 */
+        }
+
+        /* ==================== 全局页面样式 ==================== */
+        body {
+            background: #f1f5f9;         /* 页面背景：浅灰蓝 */
+            color: var(--text);           /* 文字颜色取自变量 */
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            /* 字体回退链：优先使用系统自带字体，加载快、渲染好 */
+            line-height: 1.6;            /* 行高 1.6 倍，阅读舒适 */
+        }
+
+        /* ==================== 主容器 ==================== */
+        .container-main {
+            max-width: 1280px;           /* 最大宽度限制，防止大屏幕下内容过宽 */
+            margin: 0 auto;              /* 水平居中 */
+            padding: 24px 20px;          /* 内边距 */
+        }
+
+        /* ==================== 页面标题样式 ==================== */
+        h2 {
+            font-weight: 700;
+            color: var(--text);
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;                   /* 标题文字和装饰条之间的间距 */
+        }
+
+        /* 标题左侧的靛蓝色竖条装饰，用 ::before 伪元素实现 */
+        h2::before {
+            content: '';                 /* 必须有 content 才能显示伪元素 */
+            display: inline-block;
+            width: 4px;
+            height: 28px;
+            background: var(--primary);
+            border-radius: 2px;
+        }
+
+        /* ========== 工具栏（顶部操作按钮区域） ========== */
+        .toolbar {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 14px 18px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;             /* 按钮太多时自动换行 */
+            gap: 10px;                   /* 按钮之间的间距 */
+            align-items: center;
+            box-shadow: var(--shadow-sm);
+        }
+
+        /* 工具栏中按钮之间的竖线分隔符 */
+        .toolbar .divider {
+            width: 1px;
+            height: 28px;
+            background: var(--border);
+            margin: 0 4px;
+        }
+
+        /* ==================== 工具栏按钮基础样式 ==================== */
+        .btn-tool {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;                    /* 图标和文字之间的间距 */
+            padding: 7px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: .85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition); /* hover 时平滑过渡 */
+            white-space: nowrap;          /* 文字不换行 */
+            line-height: 1.4;
+        }
+
+        /* 按钮点击时缩小一点，提供"按下去"的视觉反馈 */
+        .btn-tool:active {
+            transform: scale(.97);
+        }
+
+        /* 主要按钮（可视化编辑、代码编辑切换用） */
+        .btn-primary-tool {
+            background: var(--primary);
+            color: #fff;
+        }
+
+        .btn-primary-tool:hover {
+            background: var(--primary-hover);
+            color: #fff;
+        }
+
+        /* 次要按钮 */
+        .btn-secondary-tool {
+            background: #e2e8f0;
+            color: var(--text);
+        }
+
+        .btn-secondary-tool:hover {
+            background: #cbd5e1;
+            color: var(--text);
+        }
+
+        /* 成功按钮 */
+        .btn-success-tool {
+            background: var(--success);
+            color: #fff;
+        }
+
+        .btn-success-tool:hover {
+            background: var(--success-hover);
+            color: #fff;
+        }
+
+        /* 信息按钮（下载 JSON） */
+        .btn-info-tool {
+            background: var(--info);
+            color: #fff;
+        }
+
+        .btn-info-tool:hover {
+            background: var(--info-hover);
+            color: #fff;
+        }
+
+        /* Excel 相关按钮（橙色） */
+        .btn-excel-tool {
+            background: var(--warning);
+            color: #fff;
+        }
+
+        .btn-excel-tool:hover {
+            background: var(--warning-hover);
+            color: #fff;
+        }
+
+        /* 当前激活的模式按钮，显示一圈主色调的轮廓 */
+        .btn-tool.active-mode {
+            box-shadow: 0 0 0 2px var(--primary);
+        }
+
+        /* 错误信息文字（显示在工具栏右侧） */
+        #errorMsg {
+            color: var(--danger);
+            font-size: .85rem;
+            margin-left: auto;            /* 推到右侧 */
+            font-weight: 500;
+        }
+
+        /* ========== 顶部 Tab 导航栏（基础配置、点播源、解析规则等） ========== */
+        .nav-tabs {
+            border-bottom: 2px solid var(--border);
+            gap: 2px;
+            flex-wrap: wrap;             /* Tab 太多时换行 */
+        }
+
+        .nav-tabs .nav-link {
+            border: none;
+            color: var(--text-muted);
+            font-weight: 500;
+            font-size: .85rem;
+            padding: 10px 16px;
+            border-radius: var(--radius) var(--radius) 0 0; /* 只有上边有圆角 */
+            transition: var(--transition);
+            position: relative;           /* 为 ::after 底部指示条做定位参考 */
+        }
+
+        .nav-tabs .nav-link:hover {
+            color: var(--text);
+            background: var(--surface);
+        }
+
+        /* 当前激活的 Tab 样式 */
+        .nav-tabs .nav-link.active {
+            color: var(--primary);
+            background: #fff;
+            font-weight: 600;
+        }
+
+        /* 激活 Tab 底部的靛蓝色指示条 */
+        .nav-tabs .nav-link.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;                 /* 与 nav-tabs 的 border-bottom 对齐 */
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--primary);
+        }
+
+        /* Tab 内容区域 */
+        .tab-content {
+            background: #fff;
+            margin-top: 0;
+            padding: 24px;
+            border: 1px solid var(--border);
+            border-top: none;            /* 与 Tab 导航栏无缝衔接 */
+            border-radius: 0 0 var(--radius) var(--radius); /* 只有底部圆角 */
+            box-shadow: var(--shadow);
+            min-height: 300px;
+        }
+
+        /* ========== 子项 Tab 标签栏（每个数据源/解析规则等子项的可切换标签） ========== */
+        .sub-item-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            padding: 10px 0;
+            margin-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+            cursor: grab;                /* 鼠标悬停时显示"抓取"光标，提示可拖拽 */
+        }
+
+        .sub-item-tabs:active {
+            cursor: grabbing;            /* 正在拖拽时显示"抓住"光标 */
+        }
+
+        /* 单个子项 Tab 标签 */
+        .sub-item-tab {
+            display: inline-flex;
+            align-items: center;
+            padding: 6px 14px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-bottom: none;
+            border-radius: 6px 6px 0 0;
+            cursor: pointer;
+            position: relative;
+            top: 1px;                    /* 微调位置，让底部边框与容器边框重合 */
+            white-space: nowrap;
+            user-select: none;           /* 防止拖拽时选中文字 */
+            font-size: .82rem;
+            color: var(--text-muted);
+            transition: var(--transition);
+            max-width: 180px;            /* 标签文字过长时截断 */
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .sub-item-tab:hover {
+            background: #e0e7ff;
+            color: var(--primary);
+            border-color: #c7d2fe;
+        }
+
+        .sub-item-tab.active {
+            background: #fff;
+            color: var(--primary);
+            font-weight: 600;
+            border-color: var(--border);
+            border-bottom-color: #fff;   /* 激活标签底部变白，与内容区融为一体 */
+        }
+
+        /* 拖拽时的"幽灵"占位样式（半透明） */
+        .sub-item-tab.sortable-ghost {
+            opacity: .4;
+        }
+
+        /* 被选中拖拽的元素样式 */
+        .sub-item-tab.sortable-chosen {
+            background: #dbeafe;
+            border-color: #93c5fd;
+        }
+
+        /* 子项内容面板，默认隐藏 */
+        .sub-item-content {
+            display: none;
+            animation: fadeIn .2s ease;   /* 出现时的淡入动画 */
+        }
+
+        .sub-item-content.active {
+            display: block;
+        }
+
+        /* 淡入 + 上移的入场动画 */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(4px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ========== 子项操作按钮（添加/删除） ========== */
+        .section-actions {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .btn-sm-action {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 5px 14px;
+            border: none;
+            border-radius: 5px;
+            font-size: .8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        /* 添加按钮：绿色底 */
+        .btn-sm-add {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .btn-sm-add:hover {
+            background: #bbf7d0;
+            color: #166534;
+        }
+
+        /* 删除按钮：红色底 */
+        .btn-sm-del {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .btn-sm-del:hover {
+            background: #fecaca;
+            color: #991b1b;
+        }
+
+        /* ========== 表单字段样式 ========== */
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            font-size: .82rem;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        /* 标签中的灰色辅助说明文字 */
+        .form-group label .text-muted {
+            font-weight: 400;
+            color: var(--text-muted);
+        }
+
+        .form-control,
+        .form-select {
+            font-size: .85rem;
+            border-color: var(--border);
+            border-radius: 6px;
+            transition: var(--transition);
+        }
+
+        /* 输入框获得焦点时的高亮效果 */
+        .form-control:focus,
+        .form-select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, .1);
+            /* 主色调的淡色外发光 */
+        }
+
+        /*
+         * 当输入框有用户填写的值时，变为浅绿底色 + 绿色边框。
+         * 这是一种视觉反馈：让用户一眼看出哪些字段已经填写了。
+         */
+        .form-control.user-has-value,
+        .form-select.user-has-value {
+            background-color: #f0fdf4;
+            border-color: #86efac;
+        }
+
+        /* 文本域使用等宽字体，适合编辑 JSON 等代码内容 */
+        textarea.form-control {
+            font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace;
+            font-size: .8rem;
+            line-height: 1.5;
+        }
+
+        /* 字段分组：用虚线分隔不同的字段区域 */
+        .field-group {
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px dashed #e2e8f0;
+        }
+
+        .field-group:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        /* ========== 数组型数据的标签样式（hosts / flags / ads） ========== */
+        .array-item-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 16px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            margin-bottom: 12px;
+            min-height: 56px;
+            cursor: grab;
+        }
+
+        .array-item-list:active {
+            cursor: grabbing;
+        }
+
+        /* 单个数组项（一个小标签+输入框+删除按钮的组合） */
+        .array-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 2px;
+            transition: var(--transition);
+        }
+
+        .array-item:hover {
+            border-color: var(--primary);
+        }
+
+        .array-item input {
+            border: none;
+            outline: none;
+            font-size: .82rem;
+            padding: 5px 8px;
+            width: 180px;
+            background: transparent;
+        }
+
+        /* 数组项的删除按钮（圆形的 ✕ 按钮） */
+        .array-item-btn {
+            width: 26px;
+            height: 26px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            background: #fee2e2;
+            color: var(--danger);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: .9rem;
+            font-weight: 700;
+            transition: var(--transition);
+            padding: 0;
+            flex-shrink: 0;              /* 不缩小，保持固定尺寸 */
+        }
+
+        .array-item-btn:hover {
+            background: #fecaca;
+        }
+
+        /* ========== 代码编辑器（textarea） ========== */
+        #codeEditor {
+            width: 100%;
+            min-height: 600px;
+            font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace;
+            font-size: .82rem;
+            line-height: 1.6;
+            resize: vertical;            /* 只允许垂直方向调整大小 */
+            border-color: var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+        }
+
+        #codeEditor:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, .1);
+        }
+
+        /* ========== Toast 提示（右上角浮动消息） ========== */
+        .toast-container {
+            position: fixed;             /* 固定在视口上，不随页面滚动 */
+            top: 20px;
+            right: 20px;
+            z-index: 9999;              /* 确保在最上层显示 */
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .toast-msg {
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: .85rem;
+            font-weight: 500;
+            color: #fff;
+            box-shadow: var(--shadow-md);
+            /*
+             * 动画分为两个阶段：
+             * 1. slideIn：前 0.25 秒从右侧滑入
+             * 2. fadeOut：2.7 秒后开始淡出并上移（3 秒后完全消失，与 JS 的 setTimeout(3000) 配合）
+             */
+            animation: slideIn .25s ease, fadeOut .3s ease 2.7s forwards;
+            max-width: 360px;
+            word-break: break-word;
+        }
+
+        .toast-success {
+            background: var(--success);
+        }
+
+        .toast-error {
+            background: var(--danger);
+        }
+
+        .toast-info {
+            background: var(--info);
+        }
+
+        /* 滑入动画：从右侧 30px 处滑到原位 */
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        /* 淡出动画：向上浮动并消失 */
+        @keyframes fadeOut {
+            to {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+        }
+
+        /* ========== 确认弹窗（Modal） ========== */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;                    /* 等同于 top:0; right:0; bottom:0; left:0; 铺满全屏 */
+            background: rgba(0, 0, 0, .4); /* 半透明黑色遮罩 */
+            z-index: 10000;             /* 比 Toast 还高一层 */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeInBg .15s ease;
+        }
+
+        /* 遮罩淡入动画 */
+        @keyframes fadeInBg {
+            from {
+                opacity: 0;
+            }
+        }
+
+        /* 弹窗卡片 */
+        .modal-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 28px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, .2); /* 更重的阴影，让它浮在遮罩之上 */
+            animation: popIn .2s ease;
+        }
+
+        /* 弹窗弹出动画：从小放大到正常尺寸 */
+        @keyframes popIn {
+            from {
+                opacity: 0;
+                transform: scale(.95);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .modal-card h5 {
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .modal-card p {
+            color: var(--text-muted);
+            font-size: .9rem;
+            margin-bottom: 20px;
+        }
+
+        /* 弹窗底部按钮区，靠右排列 */
+        .modal-card .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        /* ========== 基础配置 Tab 的表单布局 ========== */
+        /*
+         * 基础配置（spider、wallpaper、logo、notice）使用 flex 布局，
+         * label 占一行，"字段名 + 输入框" 在同一行。
+         */
+        #basic .form-group {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px 12px;
+            margin-bottom: 16px;
+        }
+
+        #basic .form-group label {
+            width: 100%;                  /* label 独占一行 */
+            margin-bottom: 0;
+            font-weight: 600;
+            font-size: .85rem;
+            color: var(--text);
+        }
+
+        /* 字段名（如 spider、wallpaper）的样式 */
+        #basic .form-group .field-key {
+            min-width: 80px;
+            font-size: .82rem;
+            color: var(--text-muted);
+            font-weight: 500;
+            flex-shrink: 0;              /* 不缩小 */
+        }
+
+        /* 输入框自适应剩余空间 */
+        #basic .form-group .form-control,
+        #basic .form-group textarea.form-control {
+            flex: 1;
+            min-width: 0;
+        }
+
+        /* ========== 响应式适配（小屏幕手机等） ========== */
+        @media (max-width: 768px) {
+            .toolbar {
+                gap: 6px;
+                padding: 10px 12px;
+            }
+
+            .btn-tool {
+                padding: 6px 10px;
+                font-size: .78rem;
+            }
+
+            /* 小屏幕下隐藏分隔线 */
+            .toolbar .divider {
+                display: none;
+            }
+
+            .tab-content {
+                padding: 16px;
+            }
+
+            .nav-tabs .nav-link {
+                padding: 8px 10px;
+                font-size: .78rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container-main">
+        <!-- 页面主标题 -->
+        <h2 class="mb-4">Vod配置可视化编辑器</h2>
+
+        <!-- ==================== 顶部工具栏 ==================== -->
+        <!-- 包含：模式切换、清空、下载、Excel 导入导出等全局操作按钮 -->
+        <div class="toolbar">
+            <!-- 可视化编辑模式按钮（默认激活状态，有蓝色边框高亮） -->
+            <button type="button" class="btn-tool btn-primary-tool active-mode" id="visualModeBtn">📊 可视化编辑</button>
+            <!-- 代码编辑模式按钮（直接编辑 JSON 源码） -->
+            <button type="button" class="btn-tool btn-secondary-tool" id="codeModeBtn">{ } 代码编辑</button>
+            <div class="divider"></div>
+            <!-- 清空所有配置（红色按钮，操作不可逆，会弹确认框） -->
+            <button type="button" class="btn-tool" style="background:#ef4444;color:#fff" id="clearAllBtn">🗑
+                清空配置</button>
+            <!-- 下载当前配置为 JSON 文件 -->
+            <button type="button" class="btn-tool btn-info-tool" id="downloadBtn">⬇ 下载JSON</button>
+            <div class="divider"></div>
+            <!-- 导出配置为 Excel 文件 -->
+            <button type="button" class="btn-tool btn-excel-tool" id="exportExcelBtn">📤 导出Excel</button>
+            <!-- 隐藏的文件选择器：点击"导入Excel"按钮时触发它 -->
+            <input type="file" id="importExcelInput" accept=".xlsx,.xls" style="display:none">
+            <!-- 导入 Excel 文件按钮 -->
+            <button type="button" class="btn-tool btn-excel-tool" id="importExcelBtn">📥 导入Excel</button>
+            <!-- 错误信息显示区域（JSON 解析错误等，推到工具栏最右侧） -->
+            <span id="errorMsg"></span>
+        </div>
+
+        <!-- ==================== 主 Tab 导航栏 ==================== -->
+        <!-- 使用 Bootstrap 的 Tab 组件，每个 Tab 对应 Vod 配置的一个模块 -->
+        <ul class="nav nav-tabs" id="vodTabs" role="tablist">
+            <!-- 基础配置：spider、wallpaper、logo、notice 等全局设置 -->
+            <li class="nav-item" role="presentation"><button class="nav-link active" id="basic-tab" data-bs-toggle="tab"
+                    data-bs-target="#basic" type="button" role="tab">基础配置</button></li>
+            <!-- 点播源：视频数据来源的 API 地址、类型等配置 -->
+            <li class="nav-item" role="presentation"><button class="nav-link" id="sites-tab" data-bs-toggle="tab"
+                    data-bs-target="#sites" type="button" role="tab">点播源</button></li>
+            <!-- 解析规则：如何解析视频播放地址的规则 -->
+            <li class="nav-item" role="presentation"><button class="nav-link" id="parses-tab" data-bs-toggle="tab"
+                    data-bs-target="#parses" type="button" role="tab">解析规则</button></li>
+            <!-- 直播源：电视频道的直播地址配置 -->
+            <li class="nav-item" role="presentation"><button class="nav-link" id="lives-tab" data-bs-toggle="tab"
+                    data-bs-target="#lives" type="button" role="tab">直播源</button></li>
+            <!-- DoH 配置：加密 DNS 服务器设置 -->
+            <li class="nav-item" role="presentation"><button class="nav-link" id="doh-tab" data-bs-toggle="tab"
+                    data-bs-target="#doh" type="button" role="tab">Doh配置</button></li>
+            <!-- 代理配置：为特定域名设置代理服务器 -->
+            <li class="nav-item" role="presentation"><button class="nav-link" id="proxy-tab" data-bs-toggle="tab"
+                    data-bs-target="#proxy" type="button" role="tab">代理配置</button></li>
+            <!-- 拦截规则：WebView/播放器的网络请求拦截规则 -->
+            <li class="nav-item" role="presentation"><button class="nav-link" id="rules-tab" data-bs-toggle="tab"
+                    data-bs-target="#rules" type="button" role="tab">拦截规则</button></li>
+            <!-- 注入响应头：为特定域名的 HTTP 响应添加自定义头 -->
+            <li class="nav-item" role="presentation"><button class="nav-link" id="headers-tab" data-bs-toggle="tab"
+                    data-bs-target="#headers" type="button" role="tab">注入响应头</button></li>
+            <!-- DNS 覆盖：手动指定域名的解析结果 -->
+            <li class="nav-item" role="presentation"><button class="nav-link" id="hosts-tab" data-bs-toggle="tab"
+                    data-bs-target="#hosts" type="button" role="tab">DNS覆盖</button></li>
+            <!-- VIP 解析标识：标记哪些平台需要 VIP 解析处理 -->
+            <li class="nav-item" role="presentation"><button class="nav-link" id="flags-tab" data-bs-toggle="tab"
+                    data-bs-target="#flags" type="button" role="tab">VIP解析标识</button></li>
+            <!-- 广告过滤：广告域名黑名单 -->
+            <li class="nav-item" role="presentation"><button class="nav-link" id="ads-tab" data-bs-toggle="tab"
+                    data-bs-target="#ads" type="button" role="tab">广告过滤</button></li>
+        </ul>
+
+        <!-- ==================== Tab 内容区域 ==================== -->
+        <div class="tab-content" id="vodTabContent">
+
+            <!-- ===== 基础配置 Tab ===== -->
+            <div class="tab-pane fade show active" id="basic" role="tabpanel">
+                <!--
+                 * spider：全局爬虫 JAR 文件的路径或 URL
+                 * 所有站点默认使用这个爬虫，也可以在单个站点中单独指定 jar 字段来覆盖
+                 * 支持相对路径（如 ./spider.jar），也可以附带 md5 校验值
+                -->
+                <div class="form-group"><label for="spider">全局 Spider JAR 路径或 URL，提供给所有 sites
+                        作为默认爬虫。支持相对路径（./、../）。</label><span class="field-key">spider</span><input type="text"
+                        class="form-control" id="spider"
+                        placeholder="例：./custom_spider.jar 或 ./custom_spider.jar;md5;md5_value 或 https://xxx.jar"></div>
+                <!-- wallpaper：应用的背景壁纸，可以是图片或视频 -->
+                <div class="form-group"><label for="wallpaper">壁纸图片或视频的路径/URL。支持静态图、GIF、视频格式。</label><span
+                        class="field-key">wallpaper</span><input type="text" class="form-control" id="wallpaper"
+                        placeholder="例：./wallpaper.jpg 或 https://xxx.jpg"></div>
+                <!-- logo：应用的 Logo 图标 -->
+                <div class="form-group"><label for="logo">应用程序 Logo 图片路径/URL。</label><span
+                        class="field-key">logo</span><input type="text" class="form-control" id="logo"
+                        placeholder="例：./logo.png 或 https://xxx.png"></div>
+                <!-- notice：启动公告，应用启动时显示给用户的提示信息 -->
+                <div class="form-group"><label for="notice">启动公告文字，将显示给用户。</label><span
+                        class="field-key">notice</span><input type="text" class="form-control" id="notice"
+                        placeholder="例：欢迎使用本配置！"></div>
+            </div>
+
+            <!-- ===== 点播源 Tab ===== -->
+            <div class="tab-pane fade" id="sites" role="tabpanel">
+                <div class="alert alert-info" role="alert" style="margin-top: 15px;">点播源对象数组，每个对象代表一个点播来源。</div>
+                <!-- 子项标签栏：每个标签代表一个点播源，可拖拽排序 -->
+                <div class="sub-item-tabs" id="sitesTabs"></div>
+                <!-- 添加/删除按钮 -->
+                <div class="section-actions"><button class="btn-sm-action btn-sm-add" data-action="add-sub"
+                        data-type="sites">＋ 添加</button><button class="btn-sm-action btn-sm-del" data-action="del-sub"
+                        data-type="sites">✕ 删除</button></div>
+                <!-- 子项内容区域：点击某个标签后，这里显示对应的表单 -->
+                <div id="sitesContent"></div>
+            </div>
+
+            <!-- ===== 解析规则 Tab ===== -->
+            <div class="tab-pane fade" id="parses" role="tabpanel">
+                <div class="alert alert-info" role="alert" style="margin-top: 15px;">解析规则对象数组，定义视频 URL 的解析处理规则。</div>
+                <div class="sub-item-tabs" id="parsesTabs"></div>
+                <div class="section-actions"><button class="btn-sm-action btn-sm-add" data-action="add-sub"
+                        data-type="parses">＋ 添加</button><button class="btn-sm-action btn-sm-del" data-action="del-sub"
+                        data-type="parses">✕ 删除</button></div>
+                <div id="parsesContent"></div>
+            </div>
+
+            <!-- ===== 直播源 Tab ===== -->
+            <div class="tab-pane fade" id="lives" role="tabpanel">
+                <div class="alert alert-info" role="alert" style="margin-top: 15px;">直播源对象数组，每个对象代表一个直播来源。</div>
+                <div class="sub-item-tabs" id="livesTabs"></div>
+                <div class="section-actions"><button class="btn-sm-action btn-sm-add" data-action="add-sub"
+                        data-type="lives">＋ 添加</button><button class="btn-sm-action btn-sm-del" data-action="del-sub"
+                        data-type="lives">✕ 删除</button></div>
+                <div id="livesContent"></div>
+            </div>
+
+            <!-- ===== DoH 配置 Tab ===== -->
+            <div class="tab-pane fade" id="doh" role="tabpanel">
+                <div class="alert alert-info" role="alert" style="margin-top: 15px;">设置加密 DNS 解析服务器，保护 DNS 查询隐私并防止污染。
+                </div>
+                <div class="sub-item-tabs" id="dohTabs"></div>
+                <div class="section-actions"><button class="btn-sm-action btn-sm-add" data-action="add-sub"
+                        data-type="doh">＋ 添加</button><button class="btn-sm-action btn-sm-del" data-action="del-sub"
+                        data-type="doh">✕ 删除</button></div>
+                <div id="dohContent"></div>
+            </div>
+
+            <!-- ===== 代理配置 Tab ===== -->
+            <div class="tab-pane fade" id="proxy" role="tabpanel">
+                <div class="alert alert-info" role="alert" style="margin-top: 15px;">设置特定域名流量的代理规则。支持
+                    HTTP、HTTPS、SOCKS4、SOCKS5 代理。</div>
+                <div class="sub-item-tabs" id="proxyTabs"></div>
+                <div class="section-actions"><button class="btn-sm-action btn-sm-add" data-action="add-sub"
+                        data-type="proxy">＋ 添加</button><button class="btn-sm-action btn-sm-del" data-action="del-sub"
+                        data-type="proxy">✕ 删除</button></div>
+                <div id="proxyContent"></div>
+            </div>
+
+            <!-- ===== 拦截规则 Tab ===== -->
+            <div class="tab-pane fade" id="rules" role="tabpanel">
+                <div class="alert alert-info" role="alert" style="margin-top: 15px;">设置 WebView 或播放器的网络请求拦截与处理规则。</div>
+                <div class="sub-item-tabs" id="rulesTabs"></div>
+                <div class="section-actions"><button class="btn-sm-action btn-sm-add" data-action="add-sub"
+                        data-type="rules">＋ 添加</button><button class="btn-sm-action btn-sm-del" data-action="del-sub"
+                        data-type="rules">✕ 删除</button></div>
+                <div id="rulesContent"></div>
+            </div>
+
+            <!-- ===== 注入响应头 Tab ===== -->
+            <div class="tab-pane fade" id="headers" role="tabpanel">
+                <div class="alert alert-info" role="alert" style="margin-top: 15px;">针对特定主机，在 HTTP 响应中注入自定义头（通常用于解除 CORS
+                    限制）。</div>
+                <div class="sub-item-tabs" id="headersTabs"></div>
+                <div class="section-actions"><button class="btn-sm-action btn-sm-add" data-action="add-sub"
+                        data-type="headers">＋ 添加</button><button class="btn-sm-action btn-sm-del" data-action="del-sub"
+                        data-type="headers">✕ 删除</button></div>
+                <div id="headersContent"></div>
+            </div>
+
+            <!-- ===== DNS 覆盖 Tab ===== -->
+            <div class="tab-pane fade" id="hosts" role="tabpanel">
+                <div class="alert alert-info" role="alert" style="margin-top: 15px;">覆盖特定主机名的 DNS 解析结果，可用于 CDN
+                    调度或绕过封锁。支持通配符 *。</div>
+                <!-- 数组型数据，不需要子 Tab，直接用标签列表展示 -->
+                <div class="array-item-list" id="hostsList"></div>
+                <button class="btn-sm-action btn-sm-add" data-action="add-arr" data-type="hosts">＋ 添加DNS规则</button>
+            </div>
+
+            <!-- ===== VIP 解析标识 Tab ===== -->
+            <div class="tab-pane fade" id="flags" role="tabpanel">
+                <div class="alert alert-info" role="alert" style="margin-top: 15px;">VIP平台标识，用于标记VIP平台处理（如 "qq"）。</div>
+                <div class="array-item-list" id="flagsList"></div>
+                <button class="btn-sm-action btn-sm-add" data-action="add-arr" data-type="flags">＋ 添加平台标识</button>
+            </div>
+
+            <!-- ===== 广告过滤 Tab ===== -->
+            <div class="tab-pane fade" id="ads" role="tabpanel">
+                <div class="alert alert-info" role="alert" style="margin-top: 15px;">广告域名黑名单，符合的 HTTP 请求将被直接拦截拒绝。</div>
+                <div class="array-item-list" id="adsList"></div>
+                <button class="btn-sm-action btn-sm-add" data-action="add-arr" data-type="ads">＋ 添加广告域名</button>
+            </div>
+        </div>
+
+        <!-- ==================== 代码编辑模式区域 ==================== -->
+        <!-- 默认隐藏（d-none），切换到代码编辑模式时显示，可视化模式时隐藏 -->
+        <div id="codeEditorArea" class="d-none mt-4">
+            <label for="codeEditor" class="mb-2 fw-semibold">JSON代码编辑</label>
+            <textarea class="form-control" id="codeEditor"></textarea>
+        </div>
+    </div>
+
+    <!-- Toast 提示消息的容器，固定在页面右上角 -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- jQuery 3.7：DOM 操作库，用 $() 选择元素、绑定事件等 -->
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.0/dist/jquery.min.js"></script>
+    <!-- Bootstrap 5.3 JS：提供 Tab 切换等交互功能 -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        /*
+         * ==================== 主 IIFE（立即执行函数表达式） ====================
+         * 整个应用逻辑包裹在 IIFE 中，作用域独立，不会污染全局命名空间。
+         * 'use strict' 开启严格模式，防止一些不安全的语法（如隐式全局变量）。
+         *
+         * IIFE 的写法：(function() { ... })();
+         * 外面的 () 把函数变成表达式，最后的 () 立即调用它。
+         */
+        (function () {
+            'use strict';
+
+            /* ==================== 工具函数 ==================== */
+
+            /**
+             * esc：HTML 转义函数
+             * 将特殊字符（&, <, >, ", '）转换为 HTML 实体，防止 XSS 注入攻击。
+             * 例如：用户输入 "<script>" 会被转义为 "&lt;script&gt;"
+             *
+             * @param {any} str - 需要转义的字符串
+             * @returns {string} 转义后的安全字符串
+             */
+            function esc(str) {
+                if (str == null) return '';
+                return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            }
+
+            /**
+             * toast：在页面右上角显示一条临时提示消息
+             * 3 秒后自动消失（配合 CSS 的 fadeOut 动画）
+             *
+             * @param {string} message - 提示文字
+             * @param {string} type - 类型，可选 'success' | 'error' | 'info'，影响背景颜色
+             */
+            function toast(message, type) {
+                var el = document.createElement('div');
+                el.className = 'toast-msg toast-' + (type || 'info');
+                el.textContent = message;
+                document.getElementById('toastContainer').appendChild(el);
+                // 3000 毫秒 = 3 秒后自动移除这个 DOM 元素
+                setTimeout(function () { el.remove(); }, 3000);
+            }
+
+            /**
+             * confirmDialog：自定义确认弹窗
+             * 返回一个 Promise，用户点击"确认"则 resolve(true)，点击"取消"或按 ESC 则 resolve(false)。
+             * 支持键盘操作：Enter = 确认，Escape = 取消。
+             *
+             * 为什么不用浏览器自带的 confirm()？
+             * 因为原生 confirm 会阻塞整个页面，且样式丑陋、不可定制。
+             *
+             * @param {string} title - 弹窗标题
+             * @param {string} message - 弹窗内容
+             * @returns {Promise<boolean>} 用户是否确认
+             */
+            var _confirmActive = false;   // 防止同时弹出多个确认框
+            function confirmDialog(title, message) {
+                return new Promise(function (resolve) {
+                    // 如果已经有确认框在显示，直接返回 false
+                    if (_confirmActive) { resolve(false); return; }
+                    _confirmActive = true;
+
+                    // 创建半透明遮罩层
+                    var overlay = document.createElement('div');
+                    overlay.className = 'modal-overlay';
+                    // 拼接弹窗的 HTML 结构
+                    overlay.innerHTML = '<div class="modal-card">'
+                        + '<h5>' + esc(title) + '</h5>'
+                        + '<p>' + esc(message) + '</p>'
+                        + '<div class="modal-actions">'
+                        + '<button class="btn-tool btn-secondary-tool" data-action="cancel">取消</button>'
+                        + '<button class="btn-tool" style="background:var(--danger);color:#fff" data-action="confirm">确认删除</button>'
+                        + '</div></div>';
+                    document.body.appendChild(overlay);
+
+                    // 清理函数：移除弹窗，重置状态，返回结果
+                    function cleanup(val) { overlay.remove(); _confirmActive = false; resolve(val); }
+
+                    // 点击事件委托：通过 data-action 判断用户点击了哪个按钮
+                    overlay.addEventListener('click', function (e) {
+                        var action = e.target.dataset.action;
+                        if (action === 'confirm') cleanup(true);
+                        else if (action === 'cancel' || e.target === overlay) cleanup(false);
+                    });
+
+                    // 键盘事件：Enter 确认，Escape 取消
+                    function onKey(e) {
+                        if (e.key === 'Enter') { document.removeEventListener('keydown', onKey); cleanup(true); }
+                        else if (e.key === 'Escape') { document.removeEventListener('keydown', onKey); cleanup(false); }
+                    }
+                    document.addEventListener('keydown', onKey);
+                });
+            }
+
+            /**
+             * parseJsonOrEmpty：安全的 JSON 解析
+             * 解析成功返回对象，失败返回空对象 {}，不会抛异常导致程序中断。
+             *
+             * @param {string} str - JSON 字符串
+             * @returns {object} 解析结果或空对象
+             */
+            function parseJsonOrEmpty(str) {
+                if (!str || typeof str !== 'string') return {};
+                try { return JSON.parse(str); } catch (e) { return {}; }
+            }
+
+            /**
+             * deepCleanObj：深度清理对象
+             * 递归地移除对象中的空值（空字符串、空数组、空对象、null、undefined）。
+             * 这样导出的 JSON 不会包含无意义的空字段，保持整洁。
+             *
+             * 递归逻辑：
+             * - 如果是数组：对每个元素递归清理，然后过滤掉空值
+             * - 如果是对象：对每个属性递归清理，空值则跳过不添加
+             * - 如果是基本类型（数字、字符串、布尔）：直接返回
+             *
+             * @param {any} data - 要清理的数据
+             * @returns {any} 清理后的数据
+             */
+            function deepCleanObj(data) {
+                if (Array.isArray(data)) {
+                    return data.map(deepCleanObj).filter(function (item) {
+                        if (item === null || item === undefined || item === '') return false;
+                        if (Array.isArray(item) && item.length === 0) return false;
+                        if (typeof item === 'object' && !Array.isArray(item) && Object.keys(item).length === 0) return false;
+                        return true;
+                    });
+                }
+                if (data !== null && typeof data === 'object') {
+                    var result = {};
+                    Object.keys(data).forEach(function (key) {
+                        var val = deepCleanObj(data[key]);
+                        if (val === null || val === undefined || val === '') return;
+                        if (Array.isArray(val) && val.length === 0) return;
+                        if (typeof val === 'object' && !Array.isArray(val) && Object.keys(val).length === 0) return;
+                        result[key] = val;
+                    });
+                    return result;
+                }
+                return data;
+            }
+
+            /**
+             * uid：生成唯一 ID
+             * 格式：类型_时间戳_随机数，例如 "sites_1700000000000_12345"
+             * 用时间戳 + 随机数的组合，保证在同一次操作中不会重复。
+             *
+             * @param {string} type - 类型前缀，如 'sites'、'parses'
+             * @returns {string} 唯一标识符
+             */
+            function uid(type) { return type + '_' + Date.now() + '_' + Math.floor(Math.random() * 1e5); }
+
+            /* ==================== 应用状态（State） ==================== */
+
+            /**
+             * EMPTY_CONFIG：空配置模板
+             * 定义了 Vod 配置的完整结构，所有字段的初始值都为空。
+             * 每次"清空配置"或"新建"时，都会克隆这个模板来重置状态。
+             */
+            var EMPTY_CONFIG = {
+                spider: '', wallpaper: '', logo: '', notice: '',
+                sites: [], parses: [], lives: [], doh: [], proxy: [],
+                rules: [], headers: [], hosts: [], flags: [], ads: []
+            };
+
+            /**
+             * vodConfig：当前配置数据（核心状态）
+             * 整个编辑器围绕这个对象运作——
+             * 可视化编辑时从表单读取数据写入它，代码编辑时从 JSON 解析到它，
+             * 导出时从它生成文件。
+             * 用 JSON.parse(JSON.stringify(...)) 做深拷贝，避免引用共享问题。
+             */
+            var vodConfig = JSON.parse(JSON.stringify(EMPTY_CONFIG));
+
+            /** sortableInstances：保存所有 SortableJS 实例，销毁时需要清理 */
+            var sortableInstances = [];
+
+            /**
+             * TAB_TYPES：需要子项 Tab 管理的配置类型列表
+             * 这些类型的数据是"对象数组"，每个对象有多个字段，需要子 Tab 来管理。
+             * 注意：hosts、flags、ads 是"字符串数组"，不需要子 Tab，所以不在这里。
+             */
+            var TAB_TYPES = ['sites', 'parses', 'lives', 'doh', 'proxy', 'rules', 'headers'];
+
+            /**
+             * TYPE_LABELS：类型的中文名称映射
+             * 用于在新建子项时生成默认的 Tab 名称，让用户一看就懂。
+             */
+            var TYPE_LABELS = { sites: '点播源', parses: '解析规则', lives: '直播源', doh: 'Doh配置', proxy: '代理配置', rules: '拦截规则', headers: '注入响应头' };
+
+            /* ==================== Sortable 拖拽排序 ==================== */
+
+            /**
+             * initSortable：初始化所有可拖拽区域
+             *
+             * SortableJS 的配置项说明：
+             * - animation: 150 → 拖拽动画时长 150 毫秒
+             * - ghostClass → 被拖走后原位置占位元素的 CSS 类名
+             * - chosenClass → 当前被选中拖拽元素的 CSS 类名
+             * - handle → 指定拖拽手柄（只有点击该元素才能拖拽，防止误触）
+             * - onEnd → 拖拽结束后的回调，同步数据到配置
+             *
+             * 每次调用前先销毁旧实例，避免重复绑定。
+             */
+            function initSortable() {
+                // 销毁之前创建的所有 Sortable 实例
+                sortableInstances.forEach(function (s) { s.destroy(); });
+                sortableInstances = [];
+
+                // 为每个对象数组类型的 Tab 容器初始化拖拽排序
+                TAB_TYPES.forEach(function (type) {
+                    var container = document.getElementById(type + 'Tabs');
+                    if (container) {
+                        sortableInstances.push(new Sortable(container, {
+                            animation: 150, ghostClass: 'sortable-ghost', chosenClass: 'sortable-chosen',
+                            handle: '.sub-item-tab',
+                            // 拖拽结束后，按照新的 Tab 顺序重新排列配置数据
+                            onEnd: function () { syncTabOrderToConfig(type); }
+                        }));
+                    }
+                });
+
+                // 为简单数组（flags、ads、hosts）的列表容器初始化拖拽排序
+                ['flags', 'ads', 'hosts'].forEach(function (type) {
+                    var container = document.getElementById(type + 'List');
+                    if (container) {
+                        sortableInstances.push(new Sortable(container, {
+                            animation: 150, ghostClass: 'sortable-ghost', chosenClass: 'sortable-chosen',
+                            handle: '.array-item'
+                        }));
+                    }
+                });
+            }
+
+            /* ==================== 数据提取函数（表单 → 数据对象） ==================== */
+
+            /**
+             * extractSitesData：从一个点播源的表单元素中提取所有字段值
+             * 遍历所有输入框/下拉框，只收集有值的字段（空值跳过），构建一个干净的对象。
+             *
+             * 为什么不用 FormData？
+             * 因为每个字段需要做不同的处理：
+             * - 普通文本字段：trim 后直接取值
+             * - 数字字段：parseInt 转换
+             * - 布尔型字段：判断特定值（如 hide 只在值为 1 时才添加）
+             * - JSON 字段：parseJsonOrEmpty 解析
+             * - 数组字段：按逗号分割
+             *
+             * @param {HTMLElement} el - 包含表单的 DOM 元素
+             * @returns {object} 提取的数据对象
+             */
+            function extractSitesData(el) {
+                var $el = $(el), item = {};
+                var v;
+                v = $el.find('.key').val()?.trim(); if (v) item.key = v;     // 唯一标识，必填
+                v = $el.find('.name').val()?.trim(); if (v) item.name = v;   // 显示名称
+                v = $el.find('.type').val(); if (v !== '' && v != null) item.type = parseInt(v, 10);  // API 类型（0/1/3/4）
+                v = $el.find('.api').val()?.trim(); if (v) item.api = v;     // API 地址
+                v = $el.find('.ext').val()?.trim(); if (v) item.ext = v;     // 扩展数据
+                v = $el.find('.jar').val()?.trim(); if (v) item.jar = v;     // 专属爬虫
+                v = $el.find('.click').val()?.trim(); if (v) item.click = v; // 点击拦截
+                v = $el.find('.playUrl').val()?.trim(); if (v) item.playUrl = v; // 播放地址前缀
+
+                // hide 字段：只有值为 1 时才添加（隐藏的意思）
+                v = $el.find('.hide').val();
+                if (v !== '' && v != null) { var hv = parseInt(v, 10); if (hv === 1) item.hide = 1; }
+
+                // timeout 字段：必须大于 0 才有效
+                v = $el.find('.timeout').val();
+                if (v !== '' && v != null) { var tv = parseInt(v, 10); if (tv > 0) item.timeout = tv; }
+
+                // searchable：只有明确设为 0 时才添加（默认是启用的，所以 1 不需要写入）
+                v = $el.find('.searchable').val();
+                if (v !== '' && v != null && parseInt(v, 10) === 0) item.searchable = 0;
+
+                // changeable：同上逻辑
+                v = $el.find('.changeable').val();
+                if (v !== '' && v != null && parseInt(v, 10) === 0) item.changeable = 0;
+
+                v = $el.find('.quickSearch').val();
+                if (v !== '' && v != null) { if (parseInt(v, 10) === 1) item.quickSearch = 1; }
+
+                v = $el.find('.indexs').val();
+                if (v !== '' && v != null) { if (parseInt(v, 10) === 1) item.indexs = 1; }
+
+                // categories：逗号分隔的字符串转为数组，如 "电影,电视剧" → ["电影", "电视剧"]
+                v = $el.find('.categories').val()?.trim();
+                if (v) { var cats = v.split(',').filter(Boolean); if (cats.length) item.categories = cats; }
+
+                // header：JSON 字符串解析为对象
+                v = $el.find('.header').val()?.trim();
+                if (v) { var h = parseJsonOrEmpty(v); if (Object.keys(h).length) item.header = h; }
+
+                // style：同上
+                v = $el.find('.style').val()?.trim();
+                if (v) { var s = parseJsonOrEmpty(v); if (Object.keys(s).length) item.style = s; }
+
+                return item;
+            }
+
+            /**
+             * extractParsesData：从解析规则表单中提取数据
+             * ext 对象包含 flag（数组）和 header（对象），需要特殊处理
+             */
+            function extractParsesData(el) {
+                var $el = $(el), item = {}, ext = {}, v;
+                v = $el.find('.name').val()?.trim(); if (v) item.name = v;
+                v = $el.find('.type').val(); if (v !== '' && v != null) item.type = parseInt(v, 10);
+                v = $el.find('.url').val()?.trim(); if (v) item.url = v;
+
+                // ext.flag：逗号分隔的 VIP 标识列表
+                v = $el.find('.ext-flag').val()?.trim();
+                if (v) { var flags = v.split(',').filter(Boolean); if (flags.length) ext.flag = flags; }
+
+                // ext.header：JSON 对象
+                v = $el.find('.ext-header').val()?.trim();
+                if (v) { var h = parseJsonOrEmpty(v); if (Object.keys(h).length) ext.header = h; }
+
+                // 只有 ext 非空时才添加到 item 中
+                if (Object.keys(ext).length) item.ext = ext;
+                return item;
+            }
+
+            /**
+             * extractLivesData：从直播源表单中提取数据
+             * 直播源比点播源多了 epg、ua、origin、referer、timeZone、catchup 等字段
+             */
+            function extractLivesData(el) {
+                var $el = $(el), item = {}, v;
+                v = $el.find('.name').val()?.trim(); if (v) item.name = v;
+                v = $el.find('.url').val()?.trim(); if (v) item.url = v;
+                v = $el.find('.api').val()?.trim(); if (v) item.api = v;
+                v = $el.find('.ext').val()?.trim(); if (v) item.ext = v;
+                v = $el.find('.jar').val()?.trim(); if (v) item.jar = v;
+                v = $el.find('.click').val()?.trim(); if (v) item.click = v;
+                v = $el.find('.logo').val()?.trim(); if (v) item.logo = v;
+                v = $el.find('.epg').val()?.trim(); if (v) item.epg = v;     // 电子节目指南 URL
+                v = $el.find('.ua').val()?.trim(); if (v) item.ua = v;       // User-Agent
+                v = $el.find('.origin').val()?.trim(); if (v) item.origin = v; // Origin 头
+                v = $el.find('.referer').val()?.trim(); if (v) item.referer = v; // Referer 头
+                v = $el.find('.timeZone').val()?.trim(); if (v) item.timeZone = v; // 时区
+
+                v = $el.find('.timeout').val();
+                if (v !== '' && v != null) { var tv = parseInt(v, 10); if (tv > 0) item.timeout = tv; }
+
+                v = $el.find('.header').val()?.trim();
+                if (v) { var h = parseJsonOrEmpty(v); if (Object.keys(h).length) item.header = h; }
+
+                // catchup：追看/时移配置，JSON 对象
+                v = $el.find('.catchup').val()?.trim();
+                if (v) { var c = parseJsonOrEmpty(v); if (Object.keys(c).length) item.catchup = c; }
+
+                // boot：启动时是否自动选中这个直播源
+                if ($el.find('.boot').val() === 'true') item.boot = true;
+                return item;
+            }
+
+            /** extractDohData：从 DoH 配置表单中提取数据 */
+            function extractDohData(el) {
+                var $el = $(el), item = {}, v;
+                v = $el.find('.name').val()?.trim(); if (v) item.name = v;
+                v = $el.find('.url').val()?.trim(); if (v) item.url = v;
+                // ips：逗号分隔的 IP 地址列表
+                v = $el.find('.ips').val()?.trim();
+                if (v) { var ips = v.split(',').filter(Boolean); if (ips.length) item.ips = ips; }
+                return item;
+            }
+
+            /** extractProxyData：从代理配置表单中提取数据 */
+            function extractProxyData(el) {
+                var $el = $(el), item = {}, v;
+                v = $el.find('.name').val()?.trim(); if (v) item.name = v;
+                v = $el.find('.hosts').val()?.trim();
+                if (v) { var hosts = v.split(',').filter(Boolean); if (hosts.length) item.hosts = hosts; }
+                v = $el.find('.urls').val()?.trim();
+                if (v) { var urls = v.split(',').filter(Boolean); if (urls.length) item.urls = urls; }
+                return item;
+            }
+
+            /** extractRulesData：从拦截规则表单中提取数据 */
+            function extractRulesData(el) {
+                var $el = $(el), item = {}, v;
+                v = $el.find('.name').val()?.trim(); if (v) item.name = v;
+                v = $el.find('.hosts').val()?.trim();
+                if (v) { var hosts = v.split(',').filter(Boolean); if (hosts.length) item.hosts = hosts; }
+                v = $el.find('.regex').val()?.trim();
+                if (v) { var regex = v.split(',').filter(Boolean); if (regex.length) item.regex = regex; }
+                v = $el.find('.script').val()?.trim();
+                if (v) { var script = v.split(',').filter(Boolean); if (script.length) item.script = script; }
+                v = $el.find('.exclude').val()?.trim();
+                if (v) { var ex = v.split(',').filter(Boolean); if (ex.length) item.exclude = ex; }
+                return item;
+            }
+
+            /** extractHeadersData：从注入响应头表单中提取数据 */
+            function extractHeadersData(el) {
+                var $el = $(el), item = {}, v;
+                v = $el.find('.host').val()?.trim(); if (v) item.host = v;
+                v = $el.find('.header').val()?.trim();
+                if (v) { var h = parseJsonOrEmpty(v); if (Object.keys(h).length) item.header = h; }
+                return item;
+            }
+
+            /**
+             * EXTRACTORS：类型 → 提取函数的映射表
+             * 这是一个"策略模式"的实现，根据类型选择对应的提取函数，
+             * 避免写一大串 if-else 或 switch-case。
+             *
+             * 用法：EXTRACTORS['sites'](element) 等价于 extractSitesData(element)
+             */
+            var EXTRACTORS = {
+                sites: extractSitesData, parses: extractParsesData, lives: extractLivesData,
+                doh: extractDohData, proxy: extractProxyData, rules: extractRulesData,
+                headers: extractHeadersData
+            };
+
+            /* ==================== 数据验证函数 ==================== */
+
+            /**
+             * 每种类型都有一个验证函数，判断该条数据是否"完整有效"。
+             * 只有通过验证的数据才会被导出。
+             * 使用 !! 强转为布尔值：非空字符串/数组 → true，空 → false。
+             */
+            function isValidSite(o) { return !!(o.key && o.name && o.type != null && o.api); }    // 点播源必须有 key、name、type、api
+            function isValidParse(o) { return !!(o.name && o.type != null && o.url); }            // 解析规则必须有 name、type、url
+            function isValidLive(o) { return !!(o.name && o.url); }                               // 直播源必须有 name、url
+            function isValidDoh(o) { return !!(o.name && o.url); }                                // DoH 必须有 name、url
+            function isValidRule(o) { return !!(o.name && o.hosts && o.hosts.length && ((o.regex && o.regex.length) || (o.script && o.script.length))); }  // 规则必须有 name、hosts 和至少一个 regex 或 script
+            function isValidHeader(o) { return !!(o.host && o.header && Object.keys(o.header).length); }  // 响应头必须有 host 和 header
+            function isValidProxy(o) { return !!(o.name && o.hosts && o.hosts.length && o.urls && o.urls.length); }  // 代理必须有 name、hosts、urls
+
+            /** VALIDATORS：类型 → 验证函数的映射表 */
+            var VALIDATORS = {
+                sites: isValidSite, parses: isValidParse, lives: isValidLive,
+                doh: isValidDoh, rules: isValidRule, headers: isValidHeader, proxy: isValidProxy
+            };
+
+            /* ==================== 数据同步函数 ==================== */
+
+            /**
+             * syncTabOrderToConfig：将 Tab 的 DOM 顺序同步到配置数据中
+             *
+             * 用户拖拽 Tab 重排后，配置数据的顺序也要跟着变。
+             * 实现思路：遍历 Tab 容器中的 Tab 元素（已经是拖拽后的顺序），
+             * 找到每个 Tab 对应的内容面板，提取数据，组成新数组。
+             *
+             * @param {string} type - 配置类型，如 'sites'、'parses'
+             */
+            function syncTabOrderToConfig(type) {
+                var container = document.getElementById(type + 'Tabs');
+                if (!container) return;
+                var newOrder = [];
+                container.querySelectorAll('.sub-item-tab').forEach(function (tab) {
+                    var itemId = tab.getAttribute('data-item-id');     // 获取 Tab 关联的内容面板 ID
+                    var contentEl = document.getElementById(itemId);   // 找到对应的内容面板 DOM
+                    if (contentEl) newOrder.push(EXTRACTORS[type](contentEl));  // 提取数据
+                });
+                vodConfig[type] = newOrder;
+            }
+
+            /**
+             * syncVisualToConfig：将可视化编辑器中的所有表单数据同步到 vodConfig 对象
+             *
+             * 这是从"界面 → 数据"的同步，每次导出、切换到代码模式时都会调用。
+             * 流程：
+             * 1. 读取基础配置的 4 个文本框
+             * 2. 遍历 7 种对象数组类型，同步每个子项的 Tab 顺序
+             * 3. 遍历 3 种简单数组类型，读取每个输入框的值
+             */
+            function syncVisualToConfig() {
+                // 基础配置直接读取输入框的值
+                vodConfig.spider = ($('#spider').val() || '').trim();
+                vodConfig.wallpaper = ($('#wallpaper').val() || '').trim();
+                vodConfig.logo = ($('#logo').val() || '').trim();
+                vodConfig.notice = ($('#notice').val() || '').trim();
+
+                // 同步 7 种对象数组类型的数据
+                TAB_TYPES.forEach(syncTabOrderToConfig);
+
+                // 同步 3 种简单数组类型的数据
+                ['flags', 'ads', 'hosts'].forEach(function (type) {
+                    vodConfig[type] = [];
+                    document.querySelectorAll('#' + type + 'List .array-item input').forEach(function (el) {
+                        var val = (el.value || '').trim();
+                        if (val) vodConfig[type].push(val);
+                    });
+                });
+            }
+
+            /**
+             * buildExportConfig：构建用于导出的配置对象
+             *
+             * 流程：
+             * 1. 先同步可视化数据到 vodConfig
+             * 2. 对每个数组类型的数据，用对应的验证函数过滤掉不完整的条目
+             * 3. 用 deepCleanObj 清除空值
+             * 4. 最后再次过滤掉空字符串和空数组
+             *
+             * @returns {object} 干净的、可导出的配置对象
+             */
+            function buildExportConfig() {
+                syncVisualToConfig();
+                var fc = {};
+                Object.keys(vodConfig).forEach(function (key) {
+                    if (Array.isArray(vodConfig[key])) {
+                        var v = VALIDATORS[key];
+                        fc[key] = v ? vodConfig[key].filter(v) : vodConfig[key].slice();
+                    } else {
+                        fc[key] = vodConfig[key];
+                    }
+                });
+                var cleaned = deepCleanObj(fc);
+                var result = {};
+                Object.keys(cleaned).forEach(function (key) {
+                    var val = cleaned[key];
+                    if (val !== '' && !(Array.isArray(val) && val.length === 0)) result[key] = val;
+                });
+                return result;
+            }
+
+            /**
+             * syncConfigToCode：将配置数据格式化为 JSON，写入代码编辑器
+             * 用于从可视化模式切换到代码模式时
+             */
+            function syncConfigToCode() {
+                try {
+                    var result = buildExportConfig();
+                    // JSON.stringify 的第三个参数 2 表示缩进 2 个空格，方便人类阅读
+                    $('#codeEditor').val(JSON.stringify(result, null, 2));
+                    $('#errorMsg').text('');    // 清除之前的错误信息
+                } catch (e) {
+                    $('#errorMsg').text('JSON格式化失败：' + e.message);
+                }
+            }
+
+            /**
+             * syncCodeToConfig：从代码编辑器解析 JSON，写入 vodConfig 并刷新可视化界面
+             * 用于从代码模式切换到可视化模式时
+             *
+             * 流程：
+             * 1. 读取代码编辑器内容
+             * 2. JSON.parse 解析
+             * 3. 用 EMPTY_CONFIG 的结构做模板，确保所有字段都存在
+             * 4. 渲染到可视化界面
+             */
+            function syncCodeToConfig() {
+                var code = ($('#codeEditor').val() || '').trim();
+                if (!code) return;
+                try {
+                    var p = JSON.parse(code);
+                    var cfg = JSON.parse(JSON.stringify(EMPTY_CONFIG));
+                    // 遍历模板的所有字段，用解析结果填充（缺失的字段保持空值）
+                    Object.keys(cfg).forEach(function (k) {
+                        if (Array.isArray(cfg[k])) { cfg[k] = Array.isArray(p[k]) ? p[k] : []; }
+                        else { cfg[k] = p[k] || ''; }
+                    });
+                    vodConfig = cfg;
+                    renderConfigToVisual();
+                    $('#errorMsg').text('');
+                    toast('JSON解析成功', 'success');
+                } catch (e) {
+                    $('#errorMsg').text('JSON解析错误：' + e.message);
+                    toast('JSON解析错误', 'error');
+                }
+            }
+
+            /* ==================== 输入框视觉反馈 ==================== */
+
+            /**
+             * updateInputVisualState：根据输入框是否有值，切换 .user-has-value 样式类
+             * 有值 → 绿色底色（让用户一眼看到哪些字段已填写）
+             * 无值 → 默认白色
+             *
+             * @param {HTMLElement} el - 输入框或下拉框元素
+             */
+            function updateInputVisualState(el) {
+                if (el.tagName === 'SELECT') {
+                    // 下拉框：只要选了非空选项就算有值
+                    el.classList.toggle('user-has-value', el.value !== '');
+                } else {
+                    var val = (el.value || '').trim();
+                    // 文本框：非空且不是 "0" 和 "{}" 才算有值
+                    el.classList.toggle('user-has-value', val !== '' && val !== '0' && val !== '{}');
+                }
+            }
+
+            /**
+             * bindInputVisualFeedback：为指定容器内的所有输入框绑定视觉反馈
+             * 监听 input（文本框）和 change（下拉框）事件，实时更新绿色高亮。
+             *
+             * @param {string|null} containerId - 容器元素 ID，null 表示整个文档
+             */
+            function bindInputVisualFeedback(containerId) {
+                var root = containerId ? document.getElementById(containerId) : document;
+                if (!root) return;
+                root.querySelectorAll('input[type="text"], input[type="number"], textarea, select').forEach(function (el) {
+                    if (el.id === 'codeEditor') return;   // 跳过代码编辑器
+                    updateInputVisualState(el);            // 初始化时检查一次
+                    var evt = el.tagName === 'SELECT' ? 'change' : 'input';
+                    el.addEventListener(evt, function () { updateInputVisualState(el); });
+                });
+            }
+
+            /* ==================== 渲染配置到可视化界面 ==================== */
+
+            /**
+             * renderConfigToVisual：将 vodConfig 的数据渲染到整个可视化编辑器
+             *
+             * 这是"数据 → 界面"的渲染，调用时机：
+             * - 导入 Excel 后
+             * - 从代码模式切回可视化模式时
+             * - 清空配置后
+             *
+             * 流程：
+             * 1. 填充基础配置的 4 个输入框
+             * 2. 清空所有 Tab 和内容区域
+             * 3. 遍历每种对象数组类型，为每个数据项调用 addSubItem 创建 Tab 和表单
+             * 4. 遍历简单数组类型，创建输入标签
+             * 5. 自动选中每个 Tab 的第一个子项
+             * 6. 重新初始化拖拽排序
+             * 7. 绑定所有输入框的视觉反馈
+             */
+            function renderConfigToVisual() {
+                // 填充基础配置
+                $('#spider').val(vodConfig.spider);
+                $('#wallpaper').val(vodConfig.wallpaper);
+                $('#logo').val(vodConfig.logo);
+                $('#notice').val(vodConfig.notice);
+
+                // 清空所有 Tab 和内容
+                TAB_TYPES.forEach(function (type) {
+                    document.getElementById(type + 'Tabs').innerHTML = '';
+                    document.getElementById(type + 'Content').innerHTML = '';
+                });
+
+                // 渲染对象数组类型的每个数据项
+                vodConfig.sites.forEach(function (item, i) { addSubItem('sites', item, item.name || 'item ' + (i + 1)); });
+                vodConfig.parses.forEach(function (item, i) { addSubItem('parses', item, item.name || 'item ' + (i + 1)); });
+                vodConfig.lives.forEach(function (item, i) { addSubItem('lives', item, item.name || 'item ' + (i + 1)); });
+                vodConfig.doh.forEach(function (item, i) { addSubItem('doh', item, item.name || 'item ' + (i + 1)); });
+                vodConfig.proxy.forEach(function (item, i) { addSubItem('proxy', item, item.name || 'item ' + (i + 1)); });
+                vodConfig.rules.forEach(function (item, i) { addSubItem('rules', item, item.name || 'item ' + (i + 1)); });
+                vodConfig.headers.forEach(function (item, i) { addSubItem('headers', item, item.host || 'item ' + (i + 1)); });
+
+                // 渲染简单数组类型
+                ['flags', 'ads', 'hosts'].forEach(function (type) {
+                    var list = document.getElementById(type + 'List');
+                    list.innerHTML = '';
+                    // 如果数组为空，至少添加一个空白输入框
+                    if (vodConfig[type].length === 0) addArrayItem(type);
+                    else vodConfig[type].forEach(function (val) { addArrayItem(type, val); });
+                });
+
+                // 自动选中每个 Tab 类型的第一个子项
+                TAB_TYPES.forEach(function (type) {
+                    var first = document.querySelector('#' + type + 'Tabs .sub-item-tab');
+                    if (first) switchSubItem(type, first.getAttribute('data-item-id'));
+                });
+
+                initSortable();
+                bindInputVisualFeedback(null);
+            }
+
+            /* ==================== 子项管理（添加/切换/删除） ==================== */
+
+            /**
+             * _tabDelegationBound：记录哪些类型的 Tab 容器已经绑定了事件委托
+             * 避免重复绑定同一个事件监听器。
+             */
+            var _tabDelegationBound = {};
+
+            /**
+             * ensureTabDelegation：确保指定类型的 Tab 容器绑定了点击事件委托
+             *
+             * 事件委托原理：
+             * 不给每个 Tab 单独绑定 click 事件（太多会浪费内存），
+             * 而是绑定在父容器上，利用事件冒泡，通过 .sub-item-tab 选择器匹配。
+             *
+             * @param {string} type - 配置类型
+             */
+            function ensureTabDelegation(type) {
+                if (_tabDelegationBound[type]) return;
+                _tabDelegationBound[type] = true;
+                // jQuery 的事件委托写法：$(父元素).on('click', 子选择器, 回调)
+                $('#' + type + 'Tabs').on('click', '.sub-item-tab', function () {
+                    switchSubItem(type, $(this).data('item-id'));
+                });
+            }
+
+            /**
+             * addSubItem：添加一个子项（创建 Tab 标签 + 表单内容面板）
+             *
+             * @param {string} type - 配置类型（如 'sites'）
+             * @param {object} prefillData - 预填数据（编辑已有项时传入，新建时传空对象）
+             * @param {string} tabName - Tab 上显示的名称（不传则用类型名或数据中的 name）
+             */
+            function addSubItem(type, prefillData, tabName) {
+                prefillData = prefillData || {};
+                tabName = tabName || '';
+                var tabContainer = document.getElementById(type + 'Tabs');
+                var contentContainer = document.getElementById(type + 'Content');
+                var itemId = uid(type);    // 生成唯一 ID，关联 Tab 和内容面板
+
+                // 自动确定 Tab 名称
+                if (!tabName) {
+                    if (prefillData.name) tabName = prefillData.name;
+                    else if (type === 'headers' && prefillData.host) tabName = prefillData.host;
+                    else tabName = TYPE_LABELS[type] || type;
+                }
+
+                // 先取消所有 Tab 和内容面板的激活状态
+                tabContainer.querySelectorAll('.sub-item-tab.active').forEach(function (t) { t.classList.remove('active'); });
+                contentContainer.querySelectorAll('.sub-item-content.active').forEach(function (c) { c.classList.remove('active'); });
+
+                // 创建新的 Tab 标签
+                var tab = document.createElement('div');
+                tab.className = 'sub-item-tab active';    // 新建的自动激活
+                tab.setAttribute('data-item-id', itemId); // 存储关联的内容面板 ID
+                tab.setAttribute('data-type', type);
+                tab.textContent = tabName;
+                tabContainer.appendChild(tab);
+
+                // 插入对应的内容面板 HTML
+                contentContainer.insertAdjacentHTML('beforeend', buildSubItemContent(type, itemId, prefillData));
+
+                // 确保事件委托已绑定
+                ensureTabDelegation(type);
+
+                // 延迟一下再绑定输入反馈和聚焦，等 DOM 渲染完成
+                setTimeout(function () {
+                    bindInputVisualFeedback(itemId);
+                    var first = document.querySelector('#' + itemId + ' input, #' + itemId + ' select');
+                    if (first) first.focus();
+                }, 50);
+            }
+
+            /**
+             * switchSubItem：切换当前激活的子项
+             * 取消所有 Tab 和面板的 active 类，然后给目标 Tab 和面板加上 active。
+             *
+             * @param {string} type - 配置类型
+             * @param {string} itemId - 要激活的子项 ID
+             */
+            function switchSubItem(type, itemId) {
+                var tabContainer = document.getElementById(type + 'Tabs');
+                var contentContainer = document.getElementById(type + 'Content');
+                tabContainer.querySelectorAll('.sub-item-tab.active').forEach(function (t) { t.classList.remove('active'); });
+                contentContainer.querySelectorAll('.sub-item-content.active').forEach(function (c) { c.classList.remove('active'); });
+                var tab = tabContainer.querySelector('.sub-item-tab[data-item-id="' + itemId + '"]');
+                if (tab) tab.classList.add('active');
+                var content = document.getElementById(itemId);
+                if (content) content.classList.add('active');
+            }
+
+            /**
+             * syncTabName：实时更新 Tab 标签的显示名称
+             * 当用户在表单的 name/host 输入框中打字时，Tab 名称同步更新。
+             * 这个函数通过 window.__syncTabName 暴露给 HTML 的 oninput 事件使用。
+             *
+             * @param {string} type - 配置类型
+             * @param {string} itemId - 子项 ID
+             * @param {string} value - 新的名称
+             */
+            function syncTabName(type, itemId, value) {
+                if (!value) return;
+                var tab = document.querySelector('#' + type + 'Tabs .sub-item-tab[data-item-id="' + itemId + '"]');
+                if (tab) tab.textContent = value;
+            }
+
+            /**
+             * deleteActiveSubItem：删除当前激活的子项
+             * 先弹出确认框，用户确认后才删除 Tab 标签和内容面板，
+             * 然后自动选中下一个（或上一个）Tab。
+             *
+             * @param {string} type - 配置类型
+             */
+            function deleteActiveSubItem(type) {
+                var activeTab = document.querySelector('#' + type + 'Tabs .sub-item-tab.active');
+                if (!activeTab) { toast('请先选择要删除的子项', 'error'); return; }
+                var tabName = activeTab.textContent;
+                var itemId = activeTab.getAttribute('data-item-id');
+
+                confirmDialog('确认删除', '确定要删除「' + tabName + '」吗？此操作不可撤销。').then(function (ok) {
+                    if (!ok) return;
+                    activeTab.remove();
+                    var content = document.getElementById(itemId);
+                    if (content) content.remove();
+                    // 删除后自动选中剩余的第一个 Tab
+                    var first = document.querySelector('#' + type + 'Tabs .sub-item-tab');
+                    if (first) switchSubItem(type, first.getAttribute('data-item-id'));
+                    toast('已删除「' + tabName + '」', 'success');
+                });
+            }
+
+            /**
+             * addArrayItem：为简单数组类型（flags/ads/hosts）添加一个输入标签
+             *
+             * @param {string} type - 类型（'flags' | 'ads' | 'hosts'）
+             * @param {string} prefillValue - 预填的值（导入数据时使用）
+             */
+            function addArrayItem(type, prefillValue) {
+                var listContainer = document.getElementById(type + 'List');
+                var itemId = type + '_arr_' + Date.now() + '_' + Math.floor(Math.random() * 1e5);
+                // 不同类型的输入框显示不同的提示文字
+                var placeholders = { flags: '平台标识（如qq）', ads: '广告域名（如ads.example.com）', hosts: '原始主机名=目标IP/主机名' };
+
+                var wrapper = document.createElement('div');
+                wrapper.className = 'array-item';
+                wrapper.id = itemId;
+                wrapper.innerHTML = '<input type="text" class="form-control" value="' + esc(prefillValue || '') + '" placeholder="' + (placeholders[type] || '') + '">'
+                    + '<button class="array-item-btn" data-action="del-arr" data-target="' + itemId + '">✕</button>';
+                listContainer.appendChild(wrapper);
+
+                var input = wrapper.querySelector('input');
+                updateInputVisualState(input);
+                input.addEventListener('input', function () { updateInputVisualState(input); });
+                setTimeout(function () { input.focus(); }, 50);
+            }
+
+            /* ==================== 动态 API 提示文字 ==================== */
+
+            /**
+             * updateApiPlaceholder：根据站点类型动态更新 API 输入框的提示文字
+             * 不同的 API 类型对应不同的 API 地址格式：
+             * - type=3（爬虫）：填类名或脚本文件
+             * - type=0/1/4（HTTP API）：填 URL 地址
+             *
+             * @param {string} itemId - 站点子项的 ID
+             */
+            function updateApiPlaceholder(itemId) {
+                var contentEl = document.getElementById(itemId);
+                if (!contentEl) return;
+                var typeVal = contentEl.querySelector('.type')?.value;
+                var apiInput = contentEl.querySelector('.api');
+                if (!apiInput) return;
+                if (typeVal === '3') apiInput.placeholder = '例：csp_ClassName 或 xxx.js 或 xxx.py';
+                else if (typeVal === '0' || typeVal === '1' || typeVal === '4') apiInput.placeholder = '例：https://example.com/api.php/provide/vod/';
+                else apiInput.placeholder = '数据源Api地址';
+            }
+
+            /* ==================== HTML 模板生成函数 ==================== */
+
+            /**
+             * buildSubItemContent：根据类型和数据，生成子项的表单 HTML
+             *
+             * 这是整个编辑器最核心的模板函数。它根据 type 参数，
+             * 用字符串拼接的方式生成不同的表单 HTML。
+             *
+             * 每个字段包含：
+             * - label：字段名称 + 辅助说明
+             * - input/select/textarea：输入控件，预填已有值
+             * - placeholder：示例提示文字
+             *
+             * 关键技巧：
+             * - esc() 转义用户数据，防止 XSS
+             * - oninput="window.__syncTabName(...)" 实时同步 Tab 名称
+             * - onchange="window.__updateApiPlaceholder(...)" 动态更新提示
+             *
+             * @param {string} type - 配置类型
+             * @param {string} itemId - 唯一 ID
+             * @param {object} d - 预填数据对象
+             * @returns {string} HTML 字符串
+             */
+            function buildSubItemContent(type, itemId, d) {
+                switch (type) {
+                    case 'sites': return '<div class="sub-item-content active" id="' + itemId + '"><div class="field-group">'
+                        + _fg('Key', '（唯一标识，不可重复）', '<input type="text" class="form-control key" value="' + esc(d.key) + '" placeholder="请输入数据源唯一标识" oninput="window.__syncTabName(\'sites\',\'' + itemId + '\',this.value)">')
+                        + _fg('Name', '（数据源名称）', '<input type="text" class="form-control name" value="' + esc(d.name) + '" placeholder="请输入数据源名称，显示给用户的名称" oninput="window.__syncTabName(\'sites\',\'' + itemId + '\',this.value)">')
+                        + _fg('Type', '（API格式）', '<select class="form-control type" onchange="window.__updateApiPlaceholder(\'' + itemId + '\')">'
+                            + _opt('', d.type, '请选择来源类型')
+                            + _opt('0', d.type, '0 - XML格式API')
+                            + _opt('1', d.type, '1 - JSON格式API（Filter筛选  f=）')
+                            + _opt('3', d.type, '3 - 爬虫直接调用')
+                            + _opt('4', d.type, '4 - JSON API（Base64扩展  ext=）')
+                            + '</select>')
+                        + _fg('Api', '（数据源地址）', '<input type="text" class="form-control api" value="' + esc(d.api) + '" placeholder="数据源Api地址">')
+                        + _fg('ext', '（额外扩展数据）', '<input type="text" class="form-control ext" value="' + esc(d.ext) + '" placeholder="./ext.json 或 JSON字符串">')
+                        + _fg('jar', '（专属Spider JAR）', '<input type="text" class="form-control jar" value="' + esc(d.jar) + '" placeholder="覆盖全局spider">')
+                        + _fg('click', '（点击拦截）', '<input type="text" class="form-control click" value="' + esc(d.click) + '" placeholder="点击拦截处理 URL 或规则">')
+                        + _fg('PlayUrl', '（播放地址前缀）', '<input type="text" class="form-control playUrl" value="' + esc(d.playUrl) + '" placeholder="播放 URL 前缀或转换规则">')
+                        + _fg('hide', '（是否在来源列表中隐藏）', '<select class="form-control hide">'
+                            + _opt('', d.hide, '请选择')
+                            + _opt('0', d.hide, '0 - 显示')
+                            + _opt('1', d.hide, '1 - 隐藏')
+                            + '</select>')
+                        + _fg('timeout', '（请求超时秒数）', '<input type="number" class="form-control timeout" value="' + (d.timeout || '') + '" min="0" placeholder="留空使用默认值">')
+                        + _fg('searchable', '（搜索开关）', '<select class="form-control searchable">'
+                            + _opt('0', d.searchable, '0 - 禁用')
+                            + _opt('1', d.searchable === 0 ? undefined : 1, '1 - 启用（默认）')
+                            + '</select>')
+                        + _fg('changeable', '（线路切换开关）', '<select class="form-control changeable">'
+                            + _opt('0', d.changeable, '0 - 禁用')
+                            + _opt('1', d.changeable === 0 ? undefined : 1, '1 - 启用（默认）')
+                            + '</select>')
+                        + _fg('quickSearch', '（快速搜索开关）', '<select class="form-control quickSearch">'
+                            + _opt('', d.quickSearch, '请选择')
+                            + _opt('0', d.quickSearch, '0 - 禁用')
+                            + _opt('1', d.quickSearch, '1 - 启用')
+                            + '</select>')
+                        + _fg('indexs', '（索引模式）', '<select class="form-control indexs">'
+                            + _opt('', d.indexs, '请选择')
+                            + _opt('0', d.indexs, '0 - 否')
+                            + _opt('1', d.indexs, '1 - 是')
+                            + '</select>')
+                        + _fg('categories', '（分类白名单，逗号分隔）', '<input type="text" class="form-control categories" value="' + esc((d.categories || []).join(',')) + '" placeholder="电影,电视剧,综艺">')
+                        + _fg('header', '（HTTP请求头JSON）', '<textarea class="form-control header" rows="3" placeholder=\'{"Referer": "https://www.example.com/"}\'>' + esc(d.header ? JSON.stringify(d.header, null, 2) : '') + '</textarea>')
+                        + _fg('style', '（卡片样式JSON）', '<textarea class="form-control style" rows="3" placeholder=\'{"color": "#ff0000"}\'>' + esc(d.style ? JSON.stringify(d.style, null, 2) : '') + '</textarea>')
+                        + '</div></div>';
+
+                    case 'parses': return '<div class="sub-item-content active" id="' + itemId + '"><div class="field-group">'
+                        + _fg('name', '(解析器名称)', '<input type="text" class="form-control name" value="' + esc(d.name) + '" placeholder="请输入解析器名称" oninput="window.__syncTabName(\'parses\',\'' + itemId + '\',this.value)">')
+                        + _fg('type', '(解析器类型)', '<select class="form-control type">'
+                            + _opt('', d.type, '请选择解析器类型')
+                            + _opt('0', d.type, '0 - 嗅探  (WebView 拦截媒体 URL)')
+                            + _opt('1', d.type, '1 - JSON API  (GET 请求，取响应的 url 字段)')
+                            + _opt('2', d.type, '2 - JSON扩展  (将所有 type=1 合并后送入 JAR)')
+                            + _opt('3', d.type, '3 - JSON聚合  (将所有解析器合并后送入 JAR)')
+                            + _opt('4', d.type, '4 - 超级解析  (自动并行尝试所有 type=0/1)')
+                            + '</select>')
+                        + _fg('url', '(解析API地址)', '<input type="text" class="form-control url" value="' + esc(d.url) + '" placeholder="https://xxx/parse?url=">')
+                        + _fg('ext.flag', '(适用VIP标识，逗号分隔)', '<input type="text" class="form-control ext-flag" value="' + esc((d.ext?.flag || []).join(',')) + '" placeholder="qq,iqiyi,youku">')
+                        + _fg('ext.header', '(解析请求头JSON)', '<textarea class="form-control ext-header" rows="3" placeholder=\'{"Referer": "https://www.example.com/"}\'>' + esc(d.ext?.header ? JSON.stringify(d.ext.header, null, 2) : '') + '</textarea>')
+                        + '</div></div>';
+
+                    case 'lives': return '<div class="sub-item-content active" id="' + itemId + '"><div class="field-group">'
+                        + _fg('name', '(直播源名称，主键)', '<input type="text" class="form-control name" value="' + esc(d.name) + '" placeholder="请输入直播源名称" oninput="window.__syncTabName(\'lives\',\'' + itemId + '\',this.value)">')
+                        + _fg('url', '(外部直播列表URL)', '<input type="text" class="form-control url" value="' + esc(d.url) + '" placeholder="支持M3U、TXT 或 JSON，例： ./live.m3u">')
+                        + _fg('api', '(直播API/爬虫类名)', '<input type="text" class="form-control api" value="' + esc(d.api) + '" placeholder="例： csp_ClassName">')
+                        + _fg('ext', '(额外扩展数据)', '<input type="text" class="form-control ext" value="' + esc(d.ext) + '" placeholder="./ext.json 或 JSON字符串">')
+                        + _fg('jar', '(专属Spider JAR)', '<input type="text" class="form-control jar" value="' + esc(d.jar) + '" placeholder="覆盖全局spider">')
+                        + _fg('click', '(点击拦截)', '<input type="text" class="form-control click" value="' + esc(d.click) + '" placeholder="点击拦截处理 URL 或规则">')
+                        + _fg('logo', '(频道默认Logo URL)', '<input type="text" class="form-control logo" value="' + esc(d.logo) + '" placeholder="支持{id}、{name}、{logo} 变量">')
+                        + _fg('epg', '(EPG节目表URL)', '<input type="text" class="form-control epg" value="' + esc(d.epg) + '" placeholder="支持 {id}、{name}、{epg} 变量替换">')
+                        + _fg('ua', '(User-Agent)', '<input type="text" class="form-control ua" value="' + esc(d.ua) + '" placeholder="Mozilla/5.0">')
+                        + _fg('origin', '(Origin头)', '<input type="text" class="form-control origin" value="' + esc(d.origin) + '" placeholder="<scheme>://<hostname>:<port>">')
+                        + _fg('referer', '(Referer头)', '<input type="text" class="form-control referer" value="' + esc(d.referer) + '" placeholder="<scheme>://<hostname>">')
+                        + _fg('timeZone', '(EPG时区)', '<input type="text" class="form-control timeZone" value="' + esc(d.timeZone) + '" placeholder="Asia/Taipei">')
+                        + _fg('timeout', '(请求超时秒数)', '<input type="number" class="form-control timeout" value="' + (d.timeout || '') + '" min="0" placeholder="留空使用默认值">')
+                        + _fg('header', '(HTTP请求头JSON)', '<textarea class="form-control header" rows="2" placeholder=\'{"User-Agent": "Mozilla/5.0"}\'>' + esc(d.header ? JSON.stringify(d.header, null, 2) : '') + '</textarea>')
+                        + _fg('catchup', '(追看/时移设置JSON)', '<textarea class="form-control catchup" rows="2" placeholder=\'{"type": "append"}\'>' + esc(d.catchup ? JSON.stringify(d.catchup, null, 2) : '') + '</textarea>')
+                        + _fg('boot', '(启动自动选中)', '<select class="form-control boot">'
+                            + '<option value="false"' + (d.boot !== true ? ' selected' : '') + '>false</option>'
+                            + '<option value="true"' + (d.boot === true ? ' selected' : '') + '>true</option></select>')
+                        + '</div></div>';
+
+                    case 'doh': return '<div class="sub-item-content active" id="' + itemId + '"><div class="field-group">'
+                        + _fg('name', '(服务器名称)', '<input type="text" class="form-control name" value="' + esc(d.name) + '" placeholder="如 Google DoH" oninput="window.__syncTabName(\'doh\',\'' + itemId + '\',this.value)">')
+                        + _fg('url', '(DoH查询URL)', '<input type="text" class="form-control url" value="' + esc(d.url) + '" placeholder="https://dns.google/dns-query">')
+                        + _fg('ips', '(Bootstrap IP列表，逗号分隔)', '<input type="text" class="form-control ips" value="' + esc((d.ips || []).join(',')) + '" placeholder="8.8.8.8,8.8.4.4">')
+                        + '</div></div>';
+
+                    case 'proxy': return '<div class="sub-item-content active" id="' + itemId + '"><div class="field-group">'
+                        + _fg('name', '(代理规则名称)', '<input type="text" class="form-control name" value="' + esc(d.name) + '" placeholder="请输入代理规则名称" oninput="window.__syncTabName(\'proxy\',\'' + itemId + '\',this.value)">')
+                        + _fg('hosts', '(适用主机列表，逗号分隔)', '<input type="text" class="form-control hosts" value="' + esc((d.hosts || []).join(',')) + '" placeholder="googlevideo.com,raw.githubusercontent.com">')
+                        + _fg('urls', '(代理服务器URL列表，逗号分隔)', '<input type="text" class="form-control urls" value="' + esc((d.urls || []).join(',')) + '" placeholder="http://127.0.0.1:7890">')
+                        + '</div></div>';
+
+                    case 'rules': return '<div class="sub-item-content active" id="' + itemId + '"><div class="field-group">'
+                        + _fg('name', '(规则名称)', '<input type="text" class="form-control name" value="' + esc(d.name) + '" placeholder="请输入规则名称" oninput="window.__syncTabName(\'rules\',\'' + itemId + '\',this.value)">')
+                        + _fg('hosts', '(目标主机列表，逗号分隔)', '<input type="text" class="form-control hosts" value="' + esc((d.hosts || []).join(',')) + '" placeholder="video.example.com">')
+                        + _fg('regex', '(正则表达式列表，逗号分隔)', '<input type="text" class="form-control regex" value="' + esc((d.regex || []).join(',')) + '" placeholder="m3u8?token=">')
+                        + _fg('script', '(JS脚本，逗号分隔)', '<input type="text" class="form-control script" value="' + esc((d.script || []).join(',')) + '" placeholder="document.querySelector(\'.close-btn\').click()">')
+                        + _fg('exclude', '(排除列表，逗号分隔)', '<input type="text" class="form-control exclude" value="' + esc((d.exclude || []).join(',')) + '" placeholder="preview.json">')
+                        + '</div></div>';
+
+                    case 'headers': return '<div class="sub-item-content active" id="' + itemId + '"><div class="field-group">'
+                        + _fg('host', '(目标主机)', '<input type="text" class="form-control host" value="' + esc(d.host) + '" placeholder="不含协议，如 stream.example.com" oninput="window.__syncTabName(\'headers\',\'' + itemId + '\',this.value)">')
+                        + _fg('header', '(HTTP头JSON)', '<textarea class="form-control header" rows="3" placeholder=\'{"Access-Control-Allow-Origin": "*"}\'>' + esc(d.header ? JSON.stringify(d.header, null, 2) : '') + '</textarea>')
+                        + '</div></div>';
+                }
+                return '';
+            }
+
+            /**
+             * _fg：form-group 的缩写，生成一个表单字段的 HTML 片段
+             *
+             * 输出的 HTML 结构：
+             * <div class="form-group">
+             *   <label>字段名 <span class="text-muted">辅助说明</span></label>
+             *   [input/select/textarea 元素]
+             * </div>
+             *
+             * @param {string} label - 字段名称（如 "Key"、"Name"）
+             * @param {string} hint - 辅助说明文字（灰色显示）
+             * @param {string} inner - 输入控件的 HTML
+             * @returns {string} 完整的 form-group HTML
+             */
+            function _fg(label, hint, inner) {
+                return '<div class="form-group"><label>' + label + ' <span class="text-muted">' + hint + '</span></label>' + inner + '</div>';
+            }
+
+            /**
+             * _opt：生成 <option> 标签的 HTML
+             * 如果 option 的 value 与当前值匹配，则添加 selected 属性。
+             *
+             * @param {string} value - option 的 value
+             * @param {any} current - 当前选中的值
+             * @param {string} text - 显示的文字
+             * @returns {string] option HTML
+             */
+            function _opt(value, current, text) {
+                var selected = (current != null && String(current) === String(value)) ? ' selected' : '';
+                return '<option value="' + value + '"' + selected + '>' + text + '</option>';
+            }
+
+            /* ==================== Excel 导出相关 ==================== */
+
+            /**
+             * 以下函数返回每种数据类型在 Excel 中需要导出的字段列表。
+             * 字段顺序决定了 Excel 表格中的列顺序。
+             * 注意点播源导出的是全部字段，有些可选字段也包含在内。
+             */
+            function getSitesFields() { return ['key', 'name', 'type', 'api', 'playUrl', 'searchable', 'quickSearch', 'changeable', 'hide', 'timeout', 'ext', 'jar', 'click', 'indexs', 'categories', 'header', 'style']; }
+            function getParsesFields() { return ['name', 'type', 'url', 'ext.flag', 'ext.header']; }
+            function getLivesFields() { return ['name', 'url', 'api', 'logo', 'epg', 'ua', 'origin', 'referer', 'timeZone', 'timeout', 'ext', 'jar', 'click', 'header', 'catchup', 'boot']; }
+            function getDohFields() { return ['name', 'url', 'ips']; }
+            function getProxyFields() { return ['name', 'hosts', 'urls']; }
+            function getRulesFields() { return ['name', 'hosts', 'regex', 'script', 'exclude']; }
+            function getHeadersFields() { return ['host', 'header']; }
+
+            /**
+             * getNestedValue：通过点号路径获取嵌套对象的值
+             * 例如：getNestedValue({ext: {flag: ['qq']}}, 'ext.flag') → ['qq']
+             *
+             * 为什么需要这个函数？
+             * 因为 Excel 导出时，字段名可能是 'ext.flag' 这样的嵌套路径，
+             * 不能直接用 obj['ext.flag'] 访问（那会找一个叫 'ext.flag' 的键）。
+             *
+             * @param {object} obj - 目标对象
+             * @param {string} path - 点号分隔的路径（如 'ext.flag'）
+             * @returns {any} 路径对应的值
+             */
+            function getNestedValue(obj, path) {
+                if (!obj || !path) return undefined;
+                var parts = path.split('.');
+                var cur = obj;
+                for (var i = 0; i < parts.length; i++) {
+                    if (cur == null) return undefined;
+                    cur = cur[parts[i]];
+                }
+                return cur;
+            }
+
+            /**
+             * stringifyForExcel：将对象/数组序列化为 Excel 友好的字符串
+             * - null/undefined → 空字符串
+             * - 空对象/空数组 → 空字符串
+             * - 非空对象 → JSON 格式化的字符串
+             * - 其他类型 → 转为字符串
+             *
+             * @param {any} val - 要转换的值
+             * @returns {string} 字符串
+             */
+            function stringifyForExcel(val) {
+                if (val == null) return '';
+                if (typeof val === 'object') {
+                    if (Array.isArray(val) ? val.length === 0 : Object.keys(val).length === 0) return '';
+                    return JSON.stringify(val, null, 2);
+                }
+                return String(val);
+            }
+
+            /**
+             * FIELD_GETTERS：Excel 导出时，按类型和字段名获取值的策略映射
+             * 不同类型的同一个字段（如 header）可能需要不同的处理方式。
+             *
+             * 设计思路：用 sheetName（中文名）作为 key，而不是 type（英文名），
+             * 因为导出时是按 sheetName 匹配的。
+             */
+            var FIELD_GETTERS = {
+                '点播源': function (item, field) {
+                    switch (field) {
+                        case 'categories': return Array.isArray(item[field]) ? item[field].join(',') : '';  // 数组转逗号分隔字符串
+                        case 'header': case 'style': return stringifyForExcel(item[field]);  // JSON 对象转字符串
+                        default: return item[field] !== undefined ? item[field] : '';
+                    }
+                },
+                '解析规则': function (item, field) {
+                    if (field === 'ext.flag') return Array.isArray(item.ext?.flag) ? item.ext.flag.join(',') : '';
+                    if (field === 'ext.header') return stringifyForExcel(item.ext?.header);
+                    return item[field] !== undefined ? item[field] : '';
+                },
+                '直播源': function (item, field) {
+                    switch (field) {
+                        case 'header': case 'catchup': return stringifyForExcel(item[field]);
+                        case 'boot': return item[field] ? 'true' : 'false';  // 布尔值转字符串
+                        default: return item[field] !== undefined ? item[field] : '';
+                    }
+                }
+            };
+
+            /**
+             * exportComplexSheet：导出一个"复杂"类型的 Sheet（对象数组类型）
+             *
+             * @param {object} workbook - SheetJS 的工作簿对象
+             * @param {string} sheetName - Sheet 名称（如 '点播源'）
+             * @param {Array} data - 数据数组
+             * @param {Array} fields - 字段列表（决定列顺序）
+             */
+            function exportComplexSheet(workbook, sheetName, data, fields) {
+                // 第一行是表头
+                var aoaData = [fields];
+                // 遍历每条数据，将每个字段的值放入对应的列
+                (data || []).forEach(function (item) {
+                    aoaData.push(fields.map(function (field) {
+                        var getter = FIELD_GETTERS[sheetName];
+                        if (getter) return getter(item, field);
+                        var val = getNestedValue(item, field);
+                        if (Array.isArray(val)) return val.join(',');
+                        if (field === 'header') return stringifyForExcel(val);
+                        return val !== undefined ? val : '';
+                    }));
+                });
+                // aoa_to_sheet：将二维数组转换为 SheetJS 的工作表对象
+                // book_append_sheet：将工作表添加到工作簿
+                XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(aoaData), sheetName);
+            }
+
+            /**
+             * isCodeMode：判断当前是否处于代码编辑模式
+             * 通过检查代码编辑区域是否有 d-none（隐藏）类来判断。
+             *
+             * @returns {boolean} 是否在代码模式
+             */
+            function isCodeMode() {
+                return !$('#codeEditorArea').hasClass('d-none');
+            }
+
+            /**
+             * exportToExcel：将当前配置导出为 Excel 文件
+             *
+             * 流程：
+             * 1. 如果在代码模式，先解析代码编辑器的内容
+             * 2. 如果在可视化模式，先同步表单数据
+             * 3. 创建新的工作簿
+             * 4. 为每种配置类型创建一个 Sheet
+             * 5. 用 SheetJS 的 writeFile 触发浏览器下载
+             */
+            function exportToExcel() {
+                // Bug fix: 如果在代码模式，先解析代码编辑器中的 JSON
+                if (isCodeMode()) {
+                    var code = ($('#codeEditor').val() || '').trim();
+                    if (code) {
+                        try {
+                            var p = JSON.parse(code);
+                            var cfg = JSON.parse(JSON.stringify(EMPTY_CONFIG));
+                            Object.keys(cfg).forEach(function (k) {
+                                if (Array.isArray(cfg[k])) { cfg[k] = Array.isArray(p[k]) ? p[k] : []; }
+                                else { cfg[k] = p[k] || ''; }
+                            });
+                            vodConfig = cfg;
+                        } catch (e) {
+                            toast('JSON解析错误，无法导出：' + e.message, 'error');
+                            return;
+                        }
+                    }
+                } else {
+                    syncVisualToConfig();
+                }
+                var wb = XLSX.utils.book_new();  // 创建新的空工作簿
+
+                // 基础配置 Sheet：简单的"字段名-值"两列表格
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+                    ['字段名', '值'], ['spider', vodConfig.spider || ''], ['wallpaper', vodConfig.wallpaper || ''], ['logo', vodConfig.logo || ''], ['notice', vodConfig.notice || '']
+                ]), '基础配置');
+
+                // VIP 解析标识 Sheet：单列表格
+                var flagsData = [['平台标识']]; vodConfig.flags.forEach(function (v) { flagsData.push([v]); });
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(flagsData), 'VIP解析标识');
+                // 广告过滤 Sheet：单列表格
+                var adsData = [['广告域名']]; vodConfig.ads.forEach(function (v) { adsData.push([v]); });
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(adsData), '广告过滤');
+
+                // 导出各种对象数组类型
+                exportComplexSheet(wb, '点播源', vodConfig.sites, getSitesFields());
+                exportComplexSheet(wb, '解析规则', vodConfig.parses, getParsesFields());
+                exportComplexSheet(wb, '直播源', vodConfig.lives, getLivesFields());
+                exportComplexSheet(wb, 'Doh配置', vodConfig.doh, getDohFields());
+                exportComplexSheet(wb, '代理配置', vodConfig.proxy, getProxyFields());
+                exportComplexSheet(wb, '拦截规则', vodConfig.rules, getRulesFields());
+                exportComplexSheet(wb, '注入响应头', vodConfig.headers, getHeadersFields());
+                // DNS 覆盖：hosts 是纯字符串数组，不是对象，需要特殊处理
+                var dnsData = [['规则']];
+                (vodConfig.hosts || []).forEach(function (v) { dnsData.push([v]); });
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(dnsData), 'DNS覆盖');
+
+                // 生成文件名：Vod配置_2024-01-15_10-30-00.xlsx
+                XLSX.writeFile(wb, 'Vod配置_' + new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-') + '.xlsx');
+                toast('Excel导出成功', 'success');
+            }
+
+            /* ==================== Excel 导入相关 ==================== */
+
+            /**
+             * FIELD_SETTERS：Excel 导入时，按类型和字段名设置值的策略映射
+             * 与 FIELD_GETTERS 相反，负责把 Excel 中的字符串值转回正确的数据类型。
+             */
+            var FIELD_SETTERS = {
+                sites: function (item, field, value) {
+                    switch (field) {
+                        case 'type': case 'searchable': case 'quickSearch': case 'changeable': case 'hide': case 'timeout': case 'indexs':
+                            item[field] = parseInt(value, 10); break;  // 转为整数
+                        case 'categories': item[field] = String(value).split(',').filter(Boolean); break;  // 逗号分隔转数组
+                        case 'header': case 'style': item[field] = parseJsonOrEmpty(value); break;  // JSON 字符串转对象
+                        default: item[field] = value;  // 其他字段直接赋值
+                    }
+                },
+                parses: function (item, field, value) {
+                    if (!item.ext) item.ext = {};
+                    if (field === 'type') item[field] = parseInt(value, 10);
+                    else if (field === 'ext.flag') item.ext.flag = String(value).split(',').filter(Boolean);
+                    else if (field === 'ext.header') item.ext.header = parseJsonOrEmpty(value);
+                    else item[field] = value;
+                },
+                lives: function (item, field, value) {
+                    switch (field) {
+                        case 'timeout': item[field] = parseInt(value, 10); break;
+                        case 'boot': item[field] = value === 'true'; break;  // 字符串 'true' 转布尔 true
+                        case 'header': case 'catchup': item[field] = parseJsonOrEmpty(value); break;
+                        default: item[field] = value;
+                    }
+                }
+            };
+
+            /**
+             * importComplexSheet：从 Excel 的一个 Sheet 中导入数据到 vodConfig
+             *
+             * @param {object} workbook - SheetJS 读取的工作簿
+             * @param {string} sheetName - Sheet 名称（中文）
+             * @param {string} configKey - vodConfig 中的字段名（英文）
+             * @param {Array} fields - 字段列表
+             */
+            function importComplexSheet(workbook, sheetName, configKey, fields) {
+                if (!workbook.Sheets[sheetName]) return;
+                // sheet_to_json 将 Sheet 转为二维数组，第一行（表头）会被 shift() 移除
+                var jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: fields });
+                jsonData.shift();
+
+                jsonData.forEach(function (row) {
+                    var item = {}, hasData = false, setter = FIELD_SETTERS[configKey];
+
+                    // DNS 覆盖是特殊处理：它不是对象数组，而是字符串数组
+                    if (configKey === 'hosts') {
+                        if (row['规则'] != null && row['规则'] !== '') vodConfig.hosts.push(String(row['规则']));
+                        return;
+                    }
+
+                    // 遍历每行的每个字段
+                    Object.keys(row).forEach(function (field) {
+                        if (row[field] != null && row[field] !== '') {
+                            if (setter) setter(item, field, row[field]);  // 有专用 setter 就用它
+                            // 以下类型使用逗号分隔的字符串转数组
+                            else if (['ips', 'hosts', 'urls', 'regex', 'script', 'exclude'].indexOf(field) >= 0) item[field] = String(row[field]).split(',').filter(Boolean);
+                            else if (field === 'header') item[field] = parseJsonOrEmpty(row[field]);
+                            else item[field] = row[field];
+                            hasData = true;
+                        }
+                    });
+                    if (hasData) vodConfig[configKey].push(item);
+                });
+            }
+
+            /**
+             * importExcel：从用户选择的 Excel 文件导入配置
+             *
+             * 流程：
+             * 1. 用 FileReader 读取文件为 ArrayBuffer
+             * 2. SheetJS 解析为工作簿对象
+             * 3. 重置 vodConfig 为空模板
+             * 4. 逐个 Sheet 导入数据
+             * 5. 渲染到可视化界面并同步到代码编辑器
+             *
+             * @param {HTMLInputElement} input - 文件选择框元素
+             */
+            function importExcel(input) {
+                if (!input.files || !input.files[0]) return;
+                var reader = new FileReader();
+                reader.onload = function (e) {
+                    try {
+                        // type: 'array' 表示用 Uint8Array 读取
+                        var wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+                        vodConfig = JSON.parse(JSON.stringify(EMPTY_CONFIG));
+
+                        // 导入基础配置
+                        if (wb.Sheets['基础配置']) {
+                            XLSX.utils.sheet_to_json(wb.Sheets['基础配置'], { header: 1 }).forEach(function (row, i) {
+                                if (i > 0 && row[0] && row[1] != null && row[1] !== '') vodConfig[row[0]] = row[1];
+                            });
+                        }
+                        // 导入 VIP 解析标识
+                        if (wb.Sheets['VIP解析标识']) {
+                            XLSX.utils.sheet_to_json(wb.Sheets['VIP解析标识'], { header: 1 }).forEach(function (row, i) {
+                                if (i > 0 && row[0]) vodConfig.flags.push(String(row[0]));
+                            });
+                        }
+                        // 导入广告过滤
+                        if (wb.Sheets['广告过滤']) {
+                            XLSX.utils.sheet_to_json(wb.Sheets['广告过滤'], { header: 1 }).forEach(function (row, i) {
+                                if (i > 0 && row[0]) vodConfig.ads.push(String(row[0]));
+                            });
+                        }
+
+                        // 导入各种对象数组类型
+                        importComplexSheet(wb, '点播源', 'sites', getSitesFields());
+                        importComplexSheet(wb, '解析规则', 'parses', getParsesFields());
+                        importComplexSheet(wb, '直播源', 'lives', getLivesFields());
+                        importComplexSheet(wb, 'Doh配置', 'doh', getDohFields());
+                        importComplexSheet(wb, '代理配置', 'proxy', getProxyFields());
+                        importComplexSheet(wb, '拦截规则', 'rules', getRulesFields());
+                        importComplexSheet(wb, '注入响应头', 'headers', getHeadersFields());
+                        importComplexSheet(wb, 'DNS覆盖', 'hosts', ['规则']);
+
+                        renderConfigToVisual();
+                        syncConfigToCode();
+                        toast('Excel导入成功', 'success');
+                    } catch (err) {
+                        toast('Excel导入失败：' + err.message, 'error');
+                    }
+                    input.value = '';  // 清空文件选择框，以便重复选择同一文件
+                };
+                reader.readAsArrayBuffer(input.files[0]);
+            }
+
+            /* ==================== 全局事件委托 ==================== */
+
+            /**
+             * 全局 click 事件委托
+             * 监听整个文档的 click 事件，通过 data-action 属性判断用户点击了什么。
+             *
+             * 为什么用事件委托而不是给每个按钮单独绑定？
+             * 因为子项是动态创建的（添加/删除），如果给每个按钮单独绑定，
+             * 新创建的按钮就没有事件。事件委托绑在 document 上，
+             * 利用事件冒泡，无论按钮何时创建都能响应。
+             *
+             * 支持的 action 类型：
+             * - 'add-sub'：添加子项（对象数组类型）
+             * - 'del-sub'：删除当前激活的子项
+             * - 'add-arr'：添加数组项（简单数组类型）
+             * - 'del-arr'：删除指定的数组项
+             */
+            document.addEventListener('click', function (e) {
+                var btn = e.target.closest('[data-action]');
+                if (!btn) return;
+                var action = btn.dataset.action, type = btn.dataset.type;
+                if (action === 'add-sub' && type) { e.preventDefault(); addSubItem(type); }
+                else if (action === 'del-sub' && type) { e.preventDefault(); deleteActiveSubItem(type); }
+                else if (action === 'add-arr' && type) { e.preventDefault(); addArrayItem(type); }
+                else if (action === 'del-arr') {
+                    e.preventDefault();
+                    var target = btn.dataset.target;
+                    if (target) { var el = document.getElementById(target); if (el) el.remove(); }
+                }
+            });
+
+            /* ==================== 清空配置 ==================== */
+
+            /**
+             * clearAllConfig：清空所有配置，恢复到初始空状态
+             * 先弹确认框，用户确认后：
+             * 1. 重置 vodConfig 为空模板
+             * 2. 清除事件委托绑定标记（重新绑定）
+             * 3. 重新渲染可视化界面
+             * 4. 清空代码编辑器
+             */
+            function clearAllConfig() {
+                confirmDialog('确认清空', '确定要清空所有配置吗？此操作不可撤销。').then(function (ok) {
+                    if (!ok) return;
+                    vodConfig = JSON.parse(JSON.stringify(EMPTY_CONFIG));
+                    _tabDelegationBound = {};
+                    renderConfigToVisual();
+                    $('#codeEditor').val('');
+                    toast('配置已清空', 'success');
+                });
+            }
+
+            /* ==================== 编辑模式切换 ==================== */
+
+            /**
+             * 点击"可视化编辑"按钮：
+             * 1. 显示 Tab 导航和内容区域
+             * 2. 隐藏代码编辑器
+             * 3. 高亮可视化按钮，取消代码按钮的高亮
+             * 4. 将代码编辑器的内容解析并同步到可视化界面
+             */
+            $('#visualModeBtn').click(function () {
+                $('#vodTabs, #vodTabContent').removeClass('d-none');
+                $('#codeEditorArea').addClass('d-none');
+                $('#visualModeBtn').addClass('active-mode');
+                $('#codeModeBtn').removeClass('active-mode');
+                syncCodeToConfig();
+            });
+
+            /**
+             * 点击"代码编辑"按钮：
+             * 1. 隐藏 Tab 导航和内容区域
+             * 2. 显示代码编辑器
+             * 3. 高亮代码按钮
+             * 4. 将可视化数据同步到代码编辑器
+             */
+            $('#codeModeBtn').click(function () {
+                $('#vodTabs, #vodTabContent').addClass('d-none');
+                $('#codeEditorArea').removeClass('d-none');
+                $('#codeModeBtn').addClass('active-mode');
+                $('#visualModeBtn').removeClass('active-mode');
+                syncVisualToConfig();
+                syncConfigToCode();
+            });
+
+            /* ==================== 按钮事件绑定 ==================== */
+
+            $('#clearAllBtn').click(clearAllConfig);
+
+            /**
+             * 下载 JSON 按钮：
+             * 1. 构建导出配置
+             * 2. 创建 Blob 对象（二进制大对象）
+             * 3. 用 URL.createObjectURL 生成临时下载链接
+             * 4. 创建隐藏的 <a> 标签模拟点击下载
+             * 5. 下载完成后释放临时链接（revokeObjectURL）
+             */
+            $('#downloadBtn').click(function () {
+                var result = buildExportConfig();
+                var blob = new Blob([JSON.stringify(result, null, 2)], { type: 'application/json' });
+                var url = URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.href = url; a.download = 'vod_config.json'; a.click();
+                URL.revokeObjectURL(url);  // 释放内存
+                toast('JSON下载成功', 'success');
+            });
+
+            $('#exportExcelBtn').click(exportToExcel);
+
+            // 点击"导入Excel"按钮 → 触发隐藏的文件选择框
+            $('#importExcelBtn').click(function () { $('#importExcelInput').click(); });
+
+            // 文件选择框的 change 事件 → 调用导入函数
+            $('#importExcelInput').on('change', function () { importExcel(this); });
+
+            /* ==================== 全局内联事件处理器 ==================== */
+            /**
+             * 将函数暴露到 window 对象上，供 HTML 中的 oninput/onchange 事件调用。
+             *
+             * 为什么这么做？
+             * 因为 HTML 模板是用字符串拼接的，里面的 oninput 属性需要引用函数。
+             * 如果函数在 IIFE 内部，HTML 代码无法直接访问，所以需要挂到 window 上。
+             *
+             * __ 前缀是一种约定，表示这是内部使用的全局变量，避免与其它库冲突。
+             */
+            window.__syncTabName = syncTabName;
+            window.__updateApiPlaceholder = updateApiPlaceholder;
+
+            /* ==================== 初始化 ==================== */
+            /**
+             * $(function() { ... }) 是 jQuery 的 document.ready 写法。
+             * 确保在 DOM 完全加载后再执行初始化操作。
+             * 这里只需要初始化拖拽排序即可，因为基础配置的输入框是静态 HTML，
+             * 不需要动态创建。
+             */
+            $(function () { initSortable(); });
+
+        })();
+    </script>
+</body>
+
+</html>
