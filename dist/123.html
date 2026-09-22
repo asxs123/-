@@ -1,0 +1,2037 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>孕检日历 · 永城市人民医院建档版</title>
+  <style>
+    :root {
+      --must: #e74c3c;
+      --recommend: #f39c12;
+      --optional: #95a5a6;
+      --done: #27ae60;
+      --bg: #fff5f8;
+      --line: #f0dce4;
+      --ink: #3a2c34;
+      --sub: #8a7a82;
+      --fund: #eaf7ff;
+      --fund-ink: #2c5f7c;
+      --itemcol: 112px;
+      --cw-week: 44px;
+      --cw-day: 44px;
+      /* 三行高度：表头 / 天表头 / 项目行。左侧项目列与右侧网格共用 → 永不错位 */
+      --h-head: 44px;
+      --h-day: 30px;
+      --h-cell: 46px;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* 页面整体滚动（唯一滚动条）；日历只做横向滚动，纵向交给页面 */
+    body {
+      margin: 0;
+      padding-bottom: 40px;
+      font-family: -apple-system, "PingFang SC", "Microsoft YaHei", "WenQuanYi Micro Hei", sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 70;
+      background: linear-gradient(135deg, #ff6b9d, #ff8fab);
+      color: #fff;
+      padding: 12px 16px;
+      box-shadow: 0 2px 10px rgba(255, 107, 157, .25);
+    }
+
+    header h1 {
+      margin: 0 0 8px;
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: .5px;
+    }
+
+    .weekbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+      font-size: 13px;
+    }
+
+    .weekbadge {
+      background: rgba(255, 255, 255, .22);
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .dateinput {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+    }
+
+    .dateinput input {
+      border: none;
+      border-radius: 8px;
+      padding: 4px 8px;
+      font-size: 12px;
+      color: var(--ink);
+      max-width: 150px;
+    }
+
+    .wrap {
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+
+    .legend {
+      display: flex;
+      gap: 10px;
+      padding: 8px 16px;
+      flex-wrap: wrap;
+      font-size: 11px;
+      background: #fff;
+    }
+
+    .legend span {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      display: inline-block;
+    }
+
+    .dot.must {
+      background: var(--must);
+    }
+
+    .dot.recommend {
+      background: var(--recommend);
+    }
+
+    .dot.optional {
+      background: var(--optional);
+    }
+
+    .dot.done {
+      background: var(--done);
+    }
+
+    .info-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 0 12px;
+    }
+
+    .info-row>section {
+      flex: 1 1 340px;
+      min-width: 300px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin: 10px 0;
+      box-shadow: 0 1px 6px rgba(0, 0, 0, .05);
+      font-size: 12.5px;
+    }
+
+    .card h3 {
+      margin: 0 0 8px;
+      font-size: 14px;
+      color: #ff6b9d;
+    }
+
+    .card.warn {
+      border-left: 4px solid #e74c3c;
+      background: #fff4f4;
+    }
+
+    .card.warn h3 {
+      color: #c0392b;
+    }
+
+    .card.ok {
+      border-left: 4px solid #27ae60;
+      background: #f2fbf5;
+    }
+
+    .card.ok h3 {
+      color: #1e8449;
+    }
+
+    .card ul {
+      margin: 6px 0 0;
+      padding-left: 18px;
+    }
+
+    .card li {
+      margin-bottom: 5px;
+    }
+
+    .me {
+      color: #c0392b;
+      font-weight: 600;
+    }
+
+    .tel {
+      color: #2980b9;
+      font-weight: 700;
+    }
+
+    .tip {
+      font-size: 11px;
+      color: var(--sub);
+      padding: 6px 16px 0;
+    }
+
+    .centerhint {
+      text-align: center;
+      font-size: 11px;
+      color: #ff6b9d;
+      padding: 3px 0 0;
+      font-weight: 600;
+      min-height: 15px;
+    }
+
+    .savetip {
+      text-align: center;
+      font-size: 11px;
+      color: #27ae60;
+      padding: 2px 0;
+      font-weight: 600;
+    }
+
+    /* 日历 */
+    /* 日历滚动区：纵向可滚但前两行表头 sticky 吸顶，永不被下方表格顶掉 */
+    .hscroll {
+      overflow-x: auto;
+      overflow-y: hidden;
+      background: #fff;
+      -webkit-overflow-scrolling: touch;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      position: relative;
+    }
+
+    .hscroll::-webkit-scrollbar {
+      height: 7px;
+    }
+
+    .hscroll::-webkit-scrollbar-thumb {
+      background: #ffc4d6;
+      border-radius: 4px;
+    }
+
+    .board {
+      display: inline-flex;
+      min-width: 100%;
+    }
+
+    .items-col {
+      position: sticky;
+      left: 0;
+      z-index: 40;
+      background: #fff;
+      border-right: 2px solid var(--line);
+    }
+
+    .items-head,
+    .items-sub,
+    .item-row {
+      width: var(--itemcol);
+      flex-shrink: 0;
+    }
+
+    .items-head {
+      height: var(--h-head);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 11px;
+      color: var(--sub);
+      border-bottom: 1px solid var(--line);
+      padding: 0 6px;
+      background: #fff9fb;
+      position: relative;
+      z-index: 42;
+      will-change: transform;
+    }
+
+    /* 关键修复：与右侧"天表头行"等高的占位行，缺它就会整列错位；同样可钉住 */
+    .items-sub {
+      height: var(--h-day);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 9px;
+      color: var(--sub);
+      border-bottom: 1px solid var(--line);
+      padding: 0 6px;
+      background: #fff7fb;
+      overflow: hidden;
+      white-space: nowrap;
+      position: relative;
+      z-index: 42;
+      will-change: transform;
+    }
+
+    .items-head.pinned,
+    .items-sub.pinned {
+      box-shadow: 0 3px 8px rgba(0, 0, 0, .13);
+    }
+
+    .item-row {
+      height: var(--h-cell);
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+      gap: 6px;
+      border-bottom: 1px solid var(--line);
+      cursor: pointer;
+      transition: .15s;
+    }
+
+    .item-row:active {
+      background: #fff0f4;
+    }
+
+    .item-row .tag {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .item-row .txt {
+      overflow: hidden;
+    }
+
+    .item-row .iname {
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .item-row .ialias {
+      font-size: 8px;
+      color: var(--sub);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .grid {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .row {
+      display: flex;
+    }
+
+    /* 前两行：页面滚动到日历顶端时由 JS 用 transform 钉住（跟随页面滚动条） */
+    .row.headrow,
+    .row.dayrow {
+      position: relative;
+      z-index: 30;
+      background: #fff;
+      will-change: transform;
+    }
+
+    .row.headrow.pinned,
+    .row.dayrow.pinned {
+      box-shadow: 0 3px 8px rgba(0, 0, 0, .13);
+    }
+
+    .cell {
+      flex: 0 0 auto;
+      width: var(--cw-week);
+      height: var(--h-cell);
+      border-bottom: 1px solid var(--line);
+      border-left: 1px solid var(--line);
+      position: relative;
+      cursor: pointer;
+      overflow: hidden;
+    }
+
+    .cell.exp {
+      flex: 0 0 auto;
+      width: var(--cw-week);
+    }
+
+    /* 展开格与周格等宽，靠"格数"变多来展开 */
+    .cell.bg {
+      cursor: default;
+    }
+
+    /* 仅作列背景/列线，不响应点击 */
+    .cell.bg.hit {
+      cursor: pointer;
+    }
+
+    /* 窗口内整格可点（按周记录） */
+    .cell.bg.hit:hover {
+      background: rgba(255, 107, 157, .09);
+    }
+
+    .row-rel {
+      position: relative;
+    }
+
+    /* 项目行：长条绝对定位的参照 */
+    /* 表头：强制单行不折行 + 裁掉溢出，杜绝撑高挤占下一行 */
+    .week-head {
+      flex: 0 0 auto;
+      width: var(--cw-week);
+      height: var(--h-head);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      color: var(--sub);
+      background: #fff9fb;
+      border-bottom: 2px solid var(--line);
+      border-left: 1px solid var(--line);
+      overflow: hidden;
+      white-space: nowrap;
+      line-height: 1.2;
+      padding: 0 1px;
+    }
+
+    .week-head span {
+      display: block;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .week-head .wn {
+      font-weight: 700;
+      color: var(--ink);
+      font-size: 9px;
+    }
+
+    .week-head.today {
+      background: #ffe0ea;
+    }
+
+    .week-head.today .wn {
+      color: #ff6b9d;
+    }
+
+    .week-head.center {
+      background: #ffd6e7;
+      box-shadow: inset 0 -3px 0 #ff6b9d;
+    }
+
+    .week-head.band {
+      background: #ffe9f1;
+    }
+
+    /* 展开周所属的7格连成一条带 */
+    .week-head.band.center {
+      background: #ffd6e7;
+    }
+
+    .day-head {
+      flex: 0 0 auto;
+      width: var(--cw-week);
+      height: var(--h-day);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border-bottom: 1px solid var(--line);
+      border-left: 1px solid var(--line);
+      background: #fff7fb;
+      font-size: 9px;
+      color: var(--sub);
+      line-height: 1.15;
+      padding: 0 1px;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    .day-head span {
+      display: block;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .day-head .dn {
+      font-weight: 700;
+      color: var(--ink);
+      font-size: 10px;
+    }
+
+    .day-head.today {
+      background: #ffe0ea;
+    }
+
+    .day-head.today .dn {
+      color: #ff6b9d;
+    }
+
+    .day-head.wkend {
+      background: #fff3e6;
+    }
+
+    .day-head.wkend .dn {
+      color: #e67e22;
+    }
+
+    .cell.blank {
+      background: #fafafa;
+    }
+
+    /* 区间长条：一条横跨多个格子（跨格甘特条），字号加大 */
+    .bar.seg {
+      position: absolute;
+      top: 6px;
+      bottom: 6px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-weight: 700;
+      font-size: 11px;
+      line-height: 1.1;
+      text-align: center;
+      z-index: 2;
+      padding: 0 7px;
+      letter-spacing: .3px;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, .12);
+      pointer-events: none;
+    }
+
+    /* 长条只负责显示；点击穿透到下方格子 → 点哪周记哪周 */
+    /* 长条文字：独立成层并挂到"行级"（与日格同级），z-index 高于一切 → 永远不被覆盖。
+     注意：不能放在 .bar.seg 内部——seg 自身 z-index 会创建堆叠上下文，
+     子元素的 z-index 再高也无法越过日格，所以必须提到 row 层。 */
+    .segtext {
+      position: absolute;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+      pointer-events: none;
+      font-size: 11px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: .3px;
+      line-height: 1.1;
+      padding: 0 4px;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, .35);
+    }
+
+    .bar.must {
+      background: var(--must);
+    }
+
+    .bar.recommend {
+      background: var(--recommend);
+    }
+
+    .bar.optional {
+      background: transparent;
+      border: 2px dashed var(--optional);
+      color: var(--optional);
+    }
+
+    .bar.alt {
+      border: 2px dashed currentColor;
+      background: transparent;
+    }
+
+    /* 已完成：整条变绿 + 高对比白字 + 投影，醒目程度与未完成拉开档次 */
+    .bar.seg.allDone {
+      background: linear-gradient(135deg, #27ae60, #1e8449);
+      color: #fff;
+      border: 1px solid #196f3d;
+      box-shadow: 0 2px 8px rgba(39, 174, 96, .45);
+      font-weight: 800;
+    }
+
+    .bar.seg.allDone.optional {
+      border-style: solid;
+    }
+
+    .bar.seg.allDone::after {
+      content: "✓";
+      position: absolute;
+      top: -8px;
+      right: -6px;
+      background: #27ae60;
+      color: #fff;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      font-size: 12px;
+      font-weight: 900;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, .25);
+    }
+
+    .cell.today {
+      background: repeating-linear-gradient(45deg, #fff5f8, #fff5f8 4px, #ffe0ea 4px, #ffe0ea 8px);
+    }
+
+    .cell.center {
+      box-shadow: inset 2px 0 0 #ff6b9d, inset -2px 0 0 #ff6b9d;
+    }
+
+    .cell.exp {
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* 展开周：整格可点的透明热区（无圆圈），点哪格=哪天做；已做日格加深以示区分 */
+    .daycell {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: var(--cw-week);
+      z-index: 5;
+      cursor: pointer;
+      border-left: 1px solid rgba(255, 255, 255, .38);
+    }
+
+    .daycell:hover {
+      background: rgba(255, 255, 255, .18);
+    }
+
+    /* 已做日格：只用"底部细条 + 极淡底色"轻量标识，不再整格实心绿 → 不遮文字、不与长条重复 */
+    .daycell.done {
+      background: rgba(39, 174, 96, .20);
+      box-shadow: inset 0 -5px 0 0 #27ae60;
+    }
+
+    .daycell.today {
+      box-shadow: inset 0 0 0 2px #ff6b9d;
+    }
+
+    .daycell.done.today {
+      box-shadow: inset 0 -5px 0 0 #27ae60, inset 0 0 0 2px #ff6b9d;
+    }
+
+    /* 窗口期提醒：临期橙色闪烁，过期灰色警示 */
+    .bar.seg.urgent {
+      animation: urgentPulse 1.1s ease-in-out infinite;
+      border: 2px solid #e67e22;
+      color: #fff;
+      font-weight: 800;
+    }
+
+    @keyframes urgentPulse {
+
+      0%,
+      100% {
+        box-shadow: 0 0 0 0 rgba(230, 126, 34, .85), 0 1px 3px rgba(0, 0, 0, .12);
+        filter: brightness(1);
+      }
+
+      50% {
+        box-shadow: 0 0 0 7px rgba(230, 126, 34, 0), 0 1px 3px rgba(0, 0, 0, .12);
+        filter: brightness(1.14);
+      }
+    }
+
+    .bar.seg.expired {
+      background: repeating-linear-gradient(45deg, #7f8c8d, #7f8c8d 7px, #95a5a6 7px, #95a5a6 14px);
+      color: #fff;
+      border: 1px solid #6b7a7b;
+      opacity: .85;
+    }
+
+    /* 多次检查：本周待做（橙色实边，不闪烁，避免整条一直闪） */
+    .bar.seg.due {
+      border: 2px solid #e67e22;
+      font-weight: 800;
+    }
+
+    /* 多次检查：整项已完成（全部次数做完） */
+    .bar.seg.finish {
+      box-shadow: 0 0 0 2px #27ae60 inset;
+    }
+
+    .urgentTag {
+      display: inline-block;
+      background: #e67e22;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 800;
+      padding: 1px 6px;
+      border-radius: 9px;
+      margin-left: 4px;
+      vertical-align: middle;
+    }
+
+    /* 预算行 */
+    .bline {
+      display: flex;
+      justify-content: space-between;
+      padding: 5px 0;
+      border-bottom: 1px dashed #eee;
+      font-size: 12.5px;
+    }
+
+    .bline b {
+      font-weight: 700;
+    }
+
+    .btotal {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 2px solid var(--line);
+      font-weight: 700;
+      font-size: 14px;
+      color: #c0392b;
+    }
+
+    .note {
+      margin-top: 8px;
+      font-size: 11px;
+      color: var(--sub);
+      line-height: 1.5;
+    }
+
+    .btnrow {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 8px 0 0;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 9px;
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      background: #ff6b9d;
+      color: #fff;
+      cursor: pointer;
+    }
+
+    .btn.gray {
+      background: #bbb;
+    }
+
+    .btn.green {
+      background: #27ae60;
+    }
+
+    .toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      margin-top: 8px;
+    }
+
+    /* 弹窗 */
+    .mask {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .4);
+      z-index: 100;
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+    }
+
+    .mask.show {
+      display: flex;
+    }
+
+    .sheet {
+      background: #fff;
+      width: 100%;
+      max-height: 88vh;
+      overflow-y: auto;
+      border-radius: 18px 18px 0 0;
+      padding: 18px 18px 28px;
+      animation: slideup .25s ease;
+    }
+
+    @keyframes slideup {
+      from {
+        transform: translateY(100%);
+      }
+
+      to {
+        transform: translateY(0);
+      }
+    }
+
+    .sheet .handle {
+      width: 40px;
+      height: 4px;
+      background: #ddd;
+      border-radius: 2px;
+      margin: 0 auto 14px;
+    }
+
+    .sheet h2 {
+      margin: 0 0 4px;
+      font-size: 19px;
+    }
+
+    .sheet .cat {
+      display: inline-block;
+      font-size: 11px;
+      color: #fff;
+      padding: 2px 10px;
+      border-radius: 12px;
+      margin-bottom: 10px;
+    }
+
+    .sheet .cat.must {
+      background: var(--must);
+    }
+
+    .sheet .cat.recommend {
+      background: var(--recommend);
+    }
+
+    .sheet .cat.optional {
+      background: var(--optional);
+    }
+
+    .sheet .time {
+      color: var(--sub);
+      font-size: 13px;
+      margin-bottom: 12px;
+    }
+
+    .sheet h3 {
+      font-size: 14px;
+      margin: 14px 0 6px;
+      color: #ff6b9d;
+    }
+
+    .sheet p {
+      margin: 0;
+      font-size: 13px;
+      color: #5a4a52;
+    }
+
+    .sheet ul {
+      margin: 4px 0 0;
+      padding-left: 18px;
+    }
+
+    .sheet li {
+      font-size: 13px;
+      color: #5a4a52;
+      margin-bottom: 3px;
+    }
+
+    .sheet .price {
+      font-size: 15px;
+      font-weight: 700;
+      color: #c0392b;
+    }
+
+    .sheet .reimb {
+      background: #f2fbf5;
+      border-left: 4px solid #27ae60;
+      padding: 8px 10px;
+      border-radius: 0 8px 8px 0;
+      font-size: 12.5px;
+    }
+
+    .sheet .donebtn {
+      margin-top: 16px;
+      width: 100%;
+      border: none;
+      background: #27ae60;
+      color: #fff;
+      padding: 13px;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .sheet .donebtn.undo {
+      background: #ccc;
+    }
+
+    .closebtn {
+      position: sticky;
+      bottom: 0;
+      margin-top: 10px;
+      width: 100%;
+      border: none;
+      background: #ff6b9d;
+      color: #fff;
+      padding: 13px;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .daybar {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .daybar .dc {
+      background: #d6f5e3;
+      padding: 4px 8px;
+      border-radius: 8px;
+      font-size: 11px;
+      color: #1e8449;
+    }
+
+    .empty {
+      display: none;
+      text-align: center;
+      color: var(--sub);
+      padding: 40px 20px;
+    }
+
+    /* 平板/电脑自适应 */
+    @media (min-width:820px) {
+      :root {
+        --itemcol: 168px;
+        --h-head: 48px;
+        --h-day: 34px;
+        --h-cell: 54px;
+      }
+
+      body {
+        font-size: 15px;
+      }
+
+      header h1 {
+        font-size: 20px;
+      }
+
+      .weekbadge {
+        font-size: 14px;
+      }
+
+      .items-head {
+        font-size: 12.5px;
+      }
+
+      .items-sub {
+        font-size: 10.5px;
+      }
+
+      .item-row {
+        padding: 0 10px;
+      }
+
+      .item-row .iname {
+        font-size: 12.5px;
+      }
+
+      .item-row .ialias {
+        font-size: 9.5px;
+      }
+
+      .week-head {
+        font-size: 10.5px;
+      }
+
+      .week-head .wn {
+        font-size: 11px;
+      }
+
+      .day-head {
+        font-size: 10px;
+      }
+
+      .day-head .dn {
+        font-size: 12.5px;
+      }
+
+      .bar.seg {
+        font-size: 12.5px;
+        padding: 0 9px;
+        border-radius: 9px;
+      }
+
+      .chk {
+        width: 30px;
+        height: 30px;
+        font-size: 17px;
+      }
+
+      .card {
+        font-size: 13px;
+        padding: 14px 16px;
+      }
+
+      .card h3 {
+        font-size: 15px;
+      }
+
+      .legend {
+        font-size: 12px;
+      }
+
+      .legend .dot {
+        width: 14px;
+        height: 14px;
+      }
+
+      .sheet {
+        max-width: 640px;
+        border-radius: 18px;
+        margin-bottom: 5vh;
+      }
+
+      .mask {
+        align-items: center;
+      }
+    }
+
+    @media (min-width:1200px) {
+      :root {
+        --itemcol: 200px;
+        --h-cell: 58px;
+      }
+
+      .item-row .iname {
+        font-size: 13.5px;
+      }
+
+      .item-row .ialias {
+        font-size: 10.5px;
+      }
+
+      .bar.seg {
+        font-size: 13.5px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <div class="wrap">
+      <h1>🤰 孕检日历 · 永城市人民医院建档版</h1>
+      <div class="weekbar">
+        <div class="weekbadge" id="weekBadge">孕 0 周 0 天 · 待设置</div>
+        <div class="dateinput">
+          <span>末次月经首日</span>
+          <input type="date" id="lmpInput">
+        </div>
+        <button class="btn gray" id="panelBtn" style="padding:5px 10px;">📋 政策/费用</button>
+      </div>
+    </div>
+  </header>
+
+  <div id="topPanel">
+    <div class="wrap">
+      <div class="legend">
+        <span><i class="dot must"></i>必查</span>
+        <span><i class="dot recommend"></i>推荐做</span>
+        <span><i class="dot optional"></i>可选/高危才做</span>
+        <span><i class="dot done"></i>按天打勾</span>
+      </div>
+
+      <!-- 我的情况 + 政策 -->
+      <div class="info-row">
+        <section>
+          <div class="card warn">
+            <h3>⚠️ 我的情况 · 三项待办（按优先级）</h3>
+            <ul>
+              <li><b>① 立刻建档 + 预约NT</b>：现约孕10周，NT窗口 <b>11–13⁺⁶周</b> 只剩约3周，<span class="me">错过无法补做</span>；建档当天就让医生开NT单。
+              </li>
+              <li><b>② 核实离职原因 + 办失业登记/申领</b>：失业险累计约2年多，属"满1年不足5年"，<b>最长可领12个月</b>；永城标准
+                <b>2115元/月</b>（2025.12.1起）。需确认单位申报的是"非本人意愿中断就业"。</li>
+              <li><b>③ 问清居民医保与代缴衔接</b>：申领失业金前，先问医保经办"<span class="me">是否必须先停2026年居民医保、职工医保何时生效、生产当月是否仍被代缴</span>"，<span
+                  class="me">不要自行先停保</span>。</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>🏥 永城市人民医院 · 建档与产检</h3>
+            <ul>
+              <li><b>建档时间</b>：孕 <b>6–13⁺⁶周</b>（现约10周即可）。</li>
+              <li>
+                <b>院区/位置</b>：官方公众号确认<b>东城/东区院区妇产科门诊</b>开展围产保健（产前–分娩–产后康复）；2026年公开摘要称门诊位于"<b>1号楼二楼产科一站式门诊诊疗区域</b>"，到院后请再问导诊确认。
+              </li>
+              <li><b>咨询电话</b>：<span class="tel">0370-5201686</span>（永城市卫健委公布的市人民医院妇产科服务热线，可查证）；网传"0370-5201750"<span
+                  class="me">未获官方页面证实，请以5201686或医院总机为准</span>。</li>
+              <li><b>材料</b>：身份证、医保电子凭证/社保卡、既往B超与化验单；建议另带<b>结婚证、户口簿</b>，非永城户籍备<b>居住证</b>（用于免费两筛资格）。</li>
+              <li><b>是否空腹</b>：首次建档通常需查肝肾功能、空腹血糖、血脂等 → <b>建议挂上午号并空腹</b>（少量清水服药遵医嘱）。</li>
+              <li><b>预约</b>：NT由产科开单预约；大排畸/系统超声需提前预约，<b>提前几周以医院现场答复为准</b>（公开资料未明确，不能臆测）。</li>
+            </ul>
+          </div>
+        </section>
+        <section>
+          <div class="card ok">
+            <h3>💰 居民医保（当前路径）能报什么</h3>
+            <ul>
+              <li><b>门诊产检</b>：永城自2024年起执行商丘市级统筹 → 县级及以上定点 <b>每次起付50元、政策范围内报50%、年度封顶400元</b>。<span
+                  class="me">全年最多报400元</span>，不是"产检1200元定额"。</li>
+              <li><b>住院分娩</b>：定额支付 <b>顺产1000元 / 剖宫产2000元</b>（低于定额据实结算）。</li>
+              <li><b>免费项目</b>：符合户籍/居住条件的 <b>NT超声、血清学唐筛（中唐）</b> 属河南民生实事免费。</li>
+              <li><b>没有的</b>：居民医保<span class="me">不产生育津贴</span>；"产检1200元定额"是郑州等地<b>职工生育险</b>口径，不适用于居民医保。</li>
+              <li><b>新生儿</b>：出生 <b>90日内</b> 办理参保缴费，自出生日起合规费用可报（别错过窗口）。</li>
+            </ul>
+          </div>
+          <div class="card warn">
+            <h3>🔑 失业金 → 生育险：关键判断</h3>
+            <ul>
+              <li><b>能确定的</b>：领取失业金期间，失业保险基金<b>代缴职工基本医保（含生育险），个人不缴费</b>，待遇等同在职职工（豫人社办〔2023〕42号、河南失业保险规定）。</li>
+              <li>
+                <b>风险点（重要）</b>：生育津贴要求职工生育险<b>累计缴费"满12个月（不含12个月）"以上</b>，即需<b>超过12个月</b>；而你失业前单位<b>没缴职工医保/生育险</b>，失业保险和居民医保缴费<b>都不能折算</b>成职工生育险年限。
+              </li>
+              <li><b>推算</b>：若约2026年10月开始代缴，到预产期2027年4月约 <b>7个月</b> → <span class="me">按现有信息倾向不满足津贴条件</span>。</li>
+              <li><b>结论</b>：<span
+                  class="me">家庭预算不要计入约5.3万–5.7万元生育津贴</span>；但仍应<b>立即办理失业登记与申领</b>——失业金本身（约2115元/月）是确定收入，且代缴职工医保可提升产检/分娩报销待遇，并为后续积累连续缴费记录。
+              </li>
+              <li><b>必做</b>：到永城市医保经办窗口打印<b>职工生育保险缴费记录</b>，并<b>书面确认</b>本孕次津贴资格；所有答复留截图/回执。</li>
+            </ul>
+          </div>
+        </section>
+      </div>
+
+      <!-- 费用测算 -->
+      <div class="info-row">
+        <section>
+          <div class="card" id="budgetBox"></div>
+        </section>
+      </div>
+
+      <div class="tip">← 左右滑动看各孕周 · 当前孕周自动居中 · 点"孕X周"表头=展开该周按天（每天一格）· 未展开=按周记，展开=点哪格记哪天 · 点项目名看详情</div>
+      <div class="centerhint" id="centerHint"></div>
+      <div class="savetip" id="saveTip">💾 数据已自动保存到本机浏览器，关闭再打开不会丢失</div>
+    </div>
+  </div>
+
+  <div class="hscroll" id="layout">
+    <div class="board">
+      <div class="items-col" id="itemsCol"></div>
+      <div class="grid" id="grid"></div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="empty" id="emptyTip">请先选择「末次月经首日」，日历将自动同步显示你的孕周。</div>
+    <div class="card">
+      <h3>📚 信息来源与核实提示</h3>
+      <ul style="font-size:11.5px;color:var(--sub);">
+        <li>
+          政策依据：河南省医保局/人社厅/卫健委公开文件、国家医保局2025年河南政策解读、河南2025–2026民生实事（免费产前筛查与新生儿筛查）、豫人社办〔2023〕42号、河南失业保险金标准（一类区域2115元/月，2025.12.1起，永城属标准一）、永城市人民医院官方公众号及永城市卫健委公布热线。<b>信息截至
+            2026-09-20</b>。</li>
+        <li>医学依据：《孕前和孕期保健指南》推荐产检孕周（6–13⁺⁶、14–19⁺⁶、20–24、24–28、30–32、33–36、37–41周）及必查/备查项目分类。</li>
+        <li><span
+            class="me">须现场核实</span>：医院具体诊室房号与超声预约提前期、0370-5201750是否仍有效、居民医保停保与职工医保代缴生效时点、本人生育险累计缴费月数与津贴资格、大排畸/四维是自费还是部分统筹。
+        </li>
+        <li>费用为商丘/永城公立医院<b>参考区间估算</b>，非永城市人民医院报价；实际以医院收费与医保结算为准。</li>
+      </ul>
+      <div class="btnrow">
+        <button class="btn gray" id="clearBtn">🗑️ 清空全部打勾记录</button>
+        <button class="btn green" id="todayBtn">📍 回到本周</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="mask" id="mask">
+    <div class="sheet">
+      <div class="handle"></div>
+      <div id="sheetBody"></div>
+      <div id="sheetDays"></div>
+      <button class="donebtn" id="sheetDoneBtn" onclick="toggleSheetDone()">标记该项已完成</button>
+      <button class="closebtn" onclick="closeSheet()">关闭</button>
+    </div>
+  </div>
+
+  <script>
+    /* ================= 检查项目数据 =================
+       level: must=必查 / recommend=推荐做 / optional=可选或高危才做
+       weeks: [[起,止]] 区间段（支持多段）；exclude: 排除孕周
+       altGroup: 同组为二选一/互斥（勾一个自动取消同组其他）
+    ================================================= */
+    const ITEMS = [
+      {
+        id: 'confirm', name: '早孕超声', alias: '6-8周', level: 'must', weeks: [[6, 8]],
+        intro: '经腹或经阴道B超，确认宫内妊娠、胎数、胎心胎芽并核对孕周，排除宫外孕。建档前的核心依据。',
+        notice: ['经腹超声需适度充盈膀胱，过度憋尿反而影响观察，按超声医师要求准备', '有腹痛、阴道出血应及时就诊', '已明确宫内活胎通常不必反复查HCG/孕酮'],
+        material: ['身份证', '医保电子凭证', '既往病历'],
+        cost: '80-200元', reimb: '门诊统筹（每次50元起付后报50%，年封顶400元）',
+        policy: '建档前确认孕情的核心检查；永城市人民医院产科/围产保健门诊开单。'
+      },
+      {
+        id: 'setup', name: '建档·基础全套', alias: '6-13⁺⁶周', level: 'must', weeks: [[6, 13]],
+        intro: '到永城市人民医院建立《母子健康手册》，完成病史采集、风险评估、血压体重、妇科检查，并开具首次全套化验。',
+        notice: ['建议挂上午号并空腹（需查肝肾功能、空腹血糖、血脂等）', '携带既往报告可避免重复检查', '主动告知要申请免费NT与免费中唐资格审核'],
+        material: ['夫妻双方身份证', '医保电子凭证/社保卡', '既往B超与化验单', '结婚证、户口簿（建议）', '居住证（非永城户籍）'],
+        cost: '300-800元', reimb: '门诊统筹',
+        policy: '东城/东区院区妇产科门诊（1号楼二楼产科一站式门诊区域，到院再确认）；热线 0370-5201686。'
+      },
+      {
+        id: 'cbc', name: '血常规', alias: '建档时', level: 'must', weeks: [[6, 13]],
+        intro: '筛查贫血、感染、血小板异常；孕期血容量增加，贫血风险上升。',
+        notice: ['建议上午空腹', '与生化、空腹血糖同步安排'],
+        material: ['医保卡'], cost: '20-50元', reimb: '门诊统筹', policy: '建档必查基础项。'
+      },
+      {
+        id: 'bloodtype', name: '血型 ABO+Rh', alias: '建档时', level: 'must', weeks: [[6, 13]],
+        intro: '识别ABO及Rh血型，Rh阴性者需重点登记，评估新生儿溶血与输血风险。',
+        notice: ['携带既往血型报告可避免重复'], material: ['医保卡'],
+        cost: '20-50元', reimb: '门诊统筹', policy: '建档必查；Rh阴性需额外随访。'
+      },
+      {
+        id: 'urine', name: '尿常规', alias: '每次产检', level: 'must', weeks: [[6, 40]], repeat: true,
+        intro: '每次产检都查（不是做一次就行）：筛查尿蛋白（子痫前期信号）、尿路感染、尿糖/尿酮体。孕期是动态过程，各阶段风险不同，权威指南要求每次产前检查都查尿常规。',
+        notice: ['留取中段尿，避免阴道分泌物污染'], material: ['医保卡'],
+        cost: '10-30元/次', reimb: '门诊统筹', policy: '贯穿全孕期的常规监测项。'
+      },
+      {
+        id: 'biochem', name: '肝肾功能+空腹血糖', alias: '建档时', level: 'must', weeks: [[6, 13]],
+        intro: '建立肝肾功能与血糖基线，排查基础糖尿病、肝肾疾病，用于妊娠风险分层与后续复查对比。',
+        notice: ['必须空腹', '宜与血常规同步抽血'], material: ['医保卡'],
+        cost: '100-250元', reimb: '门诊统筹', policy: '建档必查基线项目。'
+      },
+      {
+        id: 'infect', name: '传染病筛查', alias: '乙肝/梅毒/HIV', level: 'must', weeks: [[6, 13]],
+        intro: '乙肝表面抗原、梅毒螺旋体抗体、HIV抗体，属母婴阻断必查项，阳性者需尽早干预。',
+        notice: ['需空腹', 'HBsAg阳性者孕中晚期需复查HBV DNA与肝功能', '三病母婴阻断越早越好'],
+        material: ['身份证', '医保卡'], cost: '100-250元', reimb: '国家基本公共卫生免费提供（以医院执行为准）',
+        policy: '🎉 国家母婴阻断项目，建档时通常免费；具体以永城市人民医院执行为准。'
+      },
+      {
+        id: 'thyroid', name: '甲状腺功能', alias: 'TSH/FT4/TPOAb', level: 'recommend', weeks: [[6, 13]],
+        intro: '查TSH、FT4（必要时TPOAb）。甲功异常与流产、早产、胎儿神经发育相关。',
+        notice: ['是否空腹按医院要求', '孕前已查且近期正常请携带报告避免重复'],
+        material: ['医保卡'], cost: '100-200元', reimb: '门诊统筹',
+        policy: '指南列为备查；有甲状腺病史者应作为必查。'
+      },
+      {
+        id: 'ecg', name: '心电图', alias: '建档时', level: 'must', weeks: [[6, 13]],
+        intro: '评估基础心脏情况，供建档风险评估及分娩麻醉评估使用。',
+        notice: ['不需空腹', '心律异常可能需心脏超声或心内科会诊'], material: ['医保卡'],
+        cost: '20-50元', reimb: '门诊统筹', policy: '建档必查，分娩前通常复查。'
+      },
+      {
+        id: 'nt', name: 'NT超声', alias: '11-13⁺⁶周', level: 'must', weeks: [[11, 13]],
+        intro: '测胎儿颈后透明层厚度，评估染色体异常及部分结构异常风险，是最早的排畸筛查。',
+        notice: ['时间窗极严格，超过13⁺⁶周无法补做，务必提前开单预约', '不需空腹、不需憋尿', 'NT是筛查不是确诊，增厚需进一步检查'],
+        material: ['母子手册', 'NT预约单', '身份证'],
+        cost: '150-350元', reimb: '河南民生实事·符合条件免费',
+        policy: '🎉 河南民生实事免费（夫妇一方河南户籍，或女方在河南居住满6个月）。错过NT者可在16–19⁺⁶周做免费"中孕早期超声"补筛，但不等同于再次免费NT。'
+      },
+      {
+        id: 'earlytang', name: '早孕期血清学筛查', alias: '早唐 11-13周', level: 'recommend', weeks: [[11, 13]],
+        intro: '联合PAPP-A、β-hCG等与NT评估染色体风险，与NT互补（NT是超声软指标，早唐是母体血清学筛查）。',
+        notice: ['与NT互补而非互斥', '需确认医院开展的是二联/三联', '结果不能单独作为诊断依据'],
+        material: ['身份证', '母子手册'], cost: '150-400元', reimb: '通常自费（先问是否纳入免费两筛）',
+        policy: '与中唐通常择一，不必重复；指南列为首次产检备查项目。', altGroup: 'screen'
+      },
+      {
+        id: 'midus', name: '中孕早期超声', alias: '16-19⁺⁶周补筛', level: 'recommend', weeks: [[16, 19]],
+        intro: '错过NT窗口者的民生实事免费补筛超声，排查致死性严重畸形。',
+        notice: ['仅适用于错过NT（11–13⁺⁶周）者', '无需空腹、无需憋尿'],
+        material: ['身份证', '母子手册'], cost: '150-350元', reimb: '河南民生实事·符合条件免费',
+        policy: '🎉 与NT为"错过前者可补后者"的补筛关系，不是可无理由重复免费做两次。'
+      },
+      {
+        id: 'tang', name: '中孕期唐筛', alias: '中唐 15-20⁺⁶周', level: 'must', weeks: [[15, 20]],
+        intro: '母体血清学筛查，评估21-三体、18-三体及神经管缺陷风险。',
+        notice: ['通常需空腹', '一般要求单胎、预产年龄<35岁、体重符合试剂范围', '高风险不等于确诊，需转产前诊断'],
+        material: ['身份证', '母子手册', 'B超孕周核对单'], cost: '150-400元', reimb: '河南民生实事·符合条件免费',
+        policy: '🎉 河南民生实事免费血清学筛查；与早唐、NIPT 通常择一，不必重复。', altGroup: 'screen'
+      },
+      {
+        id: 'nipt', name: '无创DNA(NIPT)', alias: '12-22⁺⁶周', level: 'recommend', weeks: [[12, 22]],
+        intro: '抽取母体外周血分析胎儿游离DNA，针对21/18/13三体检出率高于传统血清学筛查，属精准筛查。',
+        notice: ['仍属筛查不是确诊，高风险须产前诊断（羊穿）确诊', '双胎、近期输血者准确性下降', '属自费项目'],
+        material: ['身份证', '母子手册'], cost: '1200-2000元', reimb: '自费，不报销',
+        policy: '与早唐/中唐属不同筛查策略，通常择一；NIPT异常后转免费产前诊断。', altGroup: 'screen'
+      },
+      {
+        id: 'amnio', name: '羊水穿刺', alias: '18-24周', level: 'optional', weeks: [[18, 24]],
+        intro: '产前诊断"金标准"，超声引导下抽羊水做染色体核型分析，准确率近100%。',
+        notice: ['有创操作，流产风险约0.5%-1%', '需遗传咨询与知情同意', '仅适用高风险人群'],
+        material: ['身份证', '前期筛查报告', '遗传咨询记录'], cost: '2000-4000元', reimb: '高风险指征·免费产前诊断（最高减免3000元）',
+        policy: '🎉 符合指征者免费：≥35岁、多胎且≥32岁、筛查高风险、超声异常、遗传病家族史等；每孕次一次，超出资助范围自费。', altGroup: 'diag'
+      },
+      {
+        id: 'anomaly', name: '大排畸系统超声', alias: '20-24周', level: 'must', weeks: [[20, 24]],
+        intro: '中孕期胎儿系统超声，全面检查头颅、脊柱、颜面、心脏、胸腹、四肢、胎盘、羊水及宫颈，俗称"大排畸"。',
+        notice: ['需提前预约（提前几周以医院现场答复为准）', '无需憋尿、无需空腹，穿宽松衣物', '胎儿体位不佳可能需复查'],
+        material: ['母子手册', '超声预约单'], cost: '300-800元', reimb: '门诊统筹（自费为主，以医院为准）',
+        policy: '指南推荐20–24周完成；"四维"多为市场化表述，先明确是医学系统筛查还是留念成像。'
+      },
+      {
+        id: 'cbc2', name: '血常规复查', alias: '24-28周', level: 'must', weeks: [[24, 28]],
+        intro: '复查血红蛋白，筛查妊娠期贫血（尤其缺铁性贫血）。',
+        notice: ['可与OGTT同日安排，注意是否需空腹'], material: ['医保卡'],
+        cost: '20-50元', reimb: '门诊统筹', policy: '孕中期必查复查项。'
+      },
+      {
+        id: 'ogtt', name: '糖耐量 OGTT', alias: '24-28周', level: 'must', weeks: [[24, 28]],
+        intro: '75g口服葡萄糖耐量试验，测空腹及服糖后1小时、2小时血糖，诊断妊娠期糖尿病。',
+        notice: ['必须空腹', '试验前保持正常饮食与活动', '三项任一超标即诊断妊娠糖尿病，多数靠饮食+运动控制'],
+        material: ['医保卡', '空腹'], cost: '50-150元', reimb: '门诊统筹',
+        policy: '指南列为备查，但普通孕妇通常强烈推荐（超重、高龄、糖尿病家族史者尤甚）。'
+      },
+      {
+        id: 'biochem2', name: '肝肾功能/血糖复查', alias: '24-28周', level: 'recommend', weeks: [[24, 28]],
+        intro: '复查肝肾功能与血糖，识别妊娠糖尿病、肝肾功能异常及妊高症相关变化。',
+        notice: ['空腹并按预约'], material: ['医保卡'], cost: '100-250元', reimb: '门诊统筹',
+        policy: '首次异常者应按医嘱必查复查。'
+      },
+      {
+        id: 'hbv', name: '乙肝DNA+肝功', alias: '24-28周·限阳性', level: 'optional', weeks: [[24, 28]],
+        intro: 'HBsAg阳性者查乙肝五项、HBV DNA定量与肝功能，评估是否需自孕24–28周起抗病毒治疗以降低母婴传播。',
+        notice: ['仅HBsAg阳性者需要', '不得擅自停药', '新生儿出生后需尽快注射乙肝疫苗+乙肝免疫球蛋白'],
+        material: ['前期筛查报告'], cost: '200-500元', reimb: '门诊统筹',
+        policy: '母婴阻断临床路径，须由感染科/肝病科或产科按最新规范执行。'
+      },
+      {
+        id: 'routine', name: '常规产检', alias: '血压体重宫高腹围胎心', level: 'must', weeks: [[14, 40]], repeat: true,
+        exclude: [15, 16, 17, 19, 20, 21, 23, 24, 25, 27, 29, 31, 33, 35],
+        intro: '每次产检的基础监测：血压、体重、宫高、腹围、胎位、胎心率，评估母体与胎儿基本状况。',
+        notice: ['14–28周约每4周一次，28–36周每2周一次，37周后每周一次', '静坐数分钟再测血压', '关注血压与尿蛋白警惕子痫前期'],
+        material: ['母子手册', '血压记录'], cost: '20-80元/次', reimb: '门诊统筹',
+        policy: '基础监测贯穿孕中晚期，是发现妊高征、胎儿生长异常的第一道防线。'
+      },
+      {
+        id: 'growth', name: '胎儿生长超声', alias: '28-32周', level: 'recommend', weeks: [[28, 32]],
+        intro: '俗称"小排畸"，评估胎儿大小、胎位、羊水量、胎盘成熟度，排查胎儿生长受限与部分晚发结构异常。',
+        notice: ['无需特殊准备'], material: ['母子手册'], cost: '150-300元', reimb: '门诊统筹',
+        policy: '临床普遍开展；高危者可能需多次复查。'
+      },
+      {
+        id: 'coag', name: '凝血功能', alias: '32-34周', level: 'recommend', weeks: [[32, 34]],
+        intro: '评估凝血状态，为分娩、麻醉及产后出血风险做准备。',
+        notice: ['通常需空腹', '有出血/血栓倾向者更重要'], material: ['医保卡'],
+        cost: '50-150元', reimb: '门诊统筹', policy: '分娩前评估项，低风险孕妇是否常规查以医院规范为准。'
+      },
+      {
+        id: 'nst', name: '胎心监护(NST)', alias: '34-40周', level: 'must', weeks: [[34, 40]], repeat: true,
+        intro: '监测胎心率及胎动、宫缩反应，评估胎儿宫内安危。',
+        notice: ['通常无需空腹', '胎儿睡眠时可能延长观察', '胎动明显减少应立即就诊，不必等预约'],
+        material: ['母子手册'], cost: '30-80元/次', reimb: '门诊统筹',
+        policy: '指南：37–41周每周一次；高危孕妇（FGR、妊高征、糖尿病等）可提前至32周起。'
+      },
+      {
+        id: 'fetalheart', name: '胎儿心脏超声', alias: '22-28周·高危', level: 'optional', weeks: [[22, 28]],
+        intro: '胎儿超声心动图，筛查先天性心脏病，主要针对高危孕妇。',
+        notice: ['低风险孕妇不是必做', 'NT增厚或系统超声异常时转诊'], material: ['转诊单'],
+        cost: '200-500元', reimb: '自费', policy: '可选/高危推荐，最佳时机22–28周。'
+      },
+      {
+        id: 'pe', name: '子痫前期筛查', alias: '34-37周·高危', level: 'optional', weeks: [[34, 37]],
+        intro: '高危者结合子宫动脉多普勒、PlGF/sFlt-1及临床指标评估早产与子痫风险。',
+        notice: ['不等于普通血压测量', '有指征才做'], material: ['医嘱'],
+        cost: '200-500元', reimb: '自费或医保限定项目', policy: '可选/高危推荐。'
+      },
+      {
+        id: 'gbs', name: 'GBS筛查', alias: '35-37周', level: 'recommend', weeks: [[35, 37]],
+        intro: '阴道下1/3与肛周取样培养B族链球菌，阳性者分娩时用抗生素预防新生儿早发型感染。',
+        notice: ['取样前避免阴道冲洗、用药', '阳性不等于需要剖宫产', '阳性不影响母乳喂养'],
+        material: ['母子手册'], cost: '100-300元', reimb: '自费或门诊统筹（以医院为准）',
+        policy: '推荐项目；先问永城市人民医院是否纳入免费或统筹。'
+      },
+      {
+        id: 'pelvic', name: '骨盆/宫颈评估', alias: '36-37周', level: 'recommend', weeks: [[36, 37]],
+        intro: '骨盆外测量、胎位、宫颈成熟度评估与分娩计划制定，判断头盆关系与分娩方式。',
+        notice: ['孕37周前不宜为"择期"频繁内诊', '有剖宫产史/臀位者按指征处理'],
+        material: ['母子手册'], cost: '50-150元', reimb: '门诊统筹',
+        policy: '无医学指征不主张39周前择期剖宫产。'
+      },
+      {
+        id: 'infect2', name: '传染病复查', alias: '36-37周', level: 'recommend', weeks: [[36, 37]],
+        intro: '临产前复查乙肝、梅毒、HIV，确认母婴传播风险，尤其初筛阴性但存在风险或记录不全者。',
+        notice: ['携带既往报告', 'HBsAg阳性者提前告知分娩团队'], material: ['医保卡'],
+        cost: '100-250元', reimb: '门诊统筹', policy: '分娩前复核项，部分情形按必查执行。'
+      },
+      {
+        id: 'deliveryus', name: '产科超声', alias: '37-40周', level: 'must', weeks: [[37, 40]],
+        intro: '评估胎位、胎儿估重、羊水、胎盘及脐血流，为分娩方式提供依据。',
+        notice: ['估重存在误差', '巨大儿或FGR需个体化评估'], material: ['母子手册'],
+        cost: '150-300元', reimb: '门诊统筹', policy: '分娩前必查评估项。'
+      },
+      {
+        id: 'prep', name: '分娩评估与待产', alias: '37-41周', level: 'must', weeks: [[37, 41]],
+        intro: '临产前综合评估与分娩准备；40–41周未临产者需讨论引产、继续观察或剖宫产。',
+        notice: ['每日数胎动（每小时≥3次）', '见红、破水、规律宫缩立即就医', '每周一次产检'],
+        material: ['母子手册', '身份证', '住院待产包'],
+        cost: '300-800元（评估检查）', reimb: '门诊统筹；住院分娩按定额另计',
+        policy: '住院分娩：居民医保定额支付 顺产1000元 / 剖宫产2000元。'
+      },
+    ];
+
+    /* ================= 状态与本地存储 ================= */
+    let LMP = null;
+    let doneDays = {};        // { itemId: Set("W-D") }
+    let currentCenter = null;
+    let expandedWeek = null;
+    let showOptional = false; // 预算是否含可选/高危项目
+    let showPanel = true;     // 上方政策/费用面板是否展开（收起后日历占满，只留一个滚动条）
+    const STORE = 'ycPregCal_v2';
+    const STARTW = 5, ENDW = 41;
+    const $ = id => document.getElementById(id);
+    const today = () => {const d = new Date(); d.setHours(0, 0, 0, 0); return d;};
+
+    function saveState() {
+      try {
+        const done = {};
+        for (const k in doneDays) done[k] = [...doneDays[k]];
+        localStorage.setItem(STORE, JSON.stringify({
+          lmp: LMP ? LMP.toISOString().slice(0, 10) : null,
+          done, center: currentCenter, exp: expandedWeek, showOpt: showOptional, showPanel
+        }));
+      } catch (e) { }
+    }
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORE); if (!raw) return false;
+        const s = JSON.parse(raw);
+        if (s.lmp) {const d = new Date(s.lmp); d.setHours(0, 0, 0, 0); LMP = d; $('lmpInput').value = s.lmp;}
+        if (s.done) {doneDays = {}; for (const k in s.done) doneDays[k] = new Set(s.done[k]);}
+        if (typeof s.center === 'number') currentCenter = s.center;
+        if (typeof s.exp === 'number' || s.exp === null) expandedWeek = s.exp;
+        if (typeof s.showOpt === 'boolean') showOptional = s.showOpt;
+        if (typeof s.showPanel === 'boolean') showPanel = s.showPanel;
+        return !!s.lmp;
+      } catch (e) {return false;}
+    }
+
+    /* ================= 工具函数 ================= */
+    function isRange(seg) {return Array.isArray(seg) && seg.length >= 2 && typeof seg[0] === 'number';}
+    function inSchedule(it, w) {
+      const r = it.weeks.some(seg => isRange(seg) ? (w >= seg[0] && w <= seg[1]) : (seg === w));
+      return r && !(it.exclude && it.exclude.includes(w));
+    }
+    function itemRange(it) {
+      let lo = 999, hi = -1;
+      it.weeks.forEach(seg => {if (isRange(seg)) {lo = Math.min(lo, seg[0]); hi = Math.max(hi, seg[1]);} else {lo = Math.min(lo, seg); hi = Math.max(hi, seg);} });
+      return [lo, hi];
+    }
+    function dayDate(w, d) {const dt = new Date(LMP); dt.setDate(dt.getDate() + w * 7 + d); return dt;}
+    function daySet(id) {if (!doneDays[id]) doneDays[id] = new Set(); return doneDays[id];}
+    function isDayDone(id, w, d) {return daySet(id).has(w + '-' + d);}
+    function isItemDone(it) {const [lo, hi] = itemRange(it); for (let w = lo; w <= hi; w++) if (inSchedule(it, w)) for (let d = 0; d < 7; d++) if (isDayDone(it.id, w, d)) return true; return false;}
+    function doneDaysCount(it) {const [lo, hi] = itemRange(it); let n = 0; for (let w = lo; w <= hi; w++) if (inSchedule(it, w)) for (let d = 0; d < 7; d++) if (isDayDone(it.id, w, d)) n++; return n;}
+    /* ===== 多次检查：每次独立，互不联动 ===== */
+    function isRepeat(it) {return !!it.repeat;}
+    /* 某一周是否已完成：该周任意一天有记录即算（展开按天打勾 d 不为 0 也能识别） */
+    function weekDone(it, w) {
+      for (let d = 0; d < 7; d++) if (isDayDone(it.id, w, d)) return true;
+      return false;
+    }
+    /* 单个格子的完成状态：多次项目按格独立；单次项目整项联动 */
+    function cellDoneOf(it, c) {
+      if (!inSchedule(it, c.w)) return false;
+      if (c.exp) return isDayDone(it.id, c.w, c.d);
+      if (isRepeat(it)) return weekDone(it, c.w);   // 该周任意一天做过即算
+      return isItemDone(it);                    // 单次项目：任一天做过=整项完成
+    }
+    /* 应做次数 / 已做次数 */
+    function totalCountOf(it) {
+      const [lo, hi] = itemRange(it); let n = 0;
+      for (let w = lo; w <= hi; w++) if (inSchedule(it, w)) n++;
+      return n;
+    }
+    function doneCountOf(it) {
+      if (!isRepeat(it)) return isItemDone(it) ? 1 : 0;
+      const [lo, hi] = itemRange(it); let n = 0;
+      for (let w = lo; w <= hi; w++) if (inSchedule(it, w) && weekDone(it, w)) n++;
+      return n;
+    }
+    /* 当前孕周这次是否已做（多次项目用）：该周任意一天有记录即算 */
+    function currentWeekDone(it) {
+      const tw = todayWD(); if (!tw) return false;
+      return inSchedule(it, tw.week) && weekDone(it, tw.week);
+    }
+
+    /* ===== 长条文字自适应：短区间也能显示（简称/日期短格式/逐步降级） ===== */
+    function barFS() {
+      const w = (typeof window !== 'undefined' && window.innerWidth) || 375;
+      return w >= 1200 ? 13.5 : (w >= 820 ? 12.5 : 11);
+    }
+    function textW(t, fs) {
+      let w = 0; for (const ch of String(t)) w += /[\u2e80-\u9fff\uff00-\uffef]/.test(ch) ? fs : fs * 0.55;
+      return w;
+    }
+    function fitText(cands, avail, fs) {
+      for (const c of cands) {if (c && textW(c, fs) <= avail) return c;}
+      return '';
+    }
+    function shortBase(name) {
+      let s = String(name || '').split(/[（(]/)[0].split('+')[0].split('·')[0].trim();
+      return s || String(name || '');
+    }
+    /* 实际打勾的那天（Date）；用于单次项目显示"哪天做的" */
+    function firstDoneDateObj(it) {
+      const [lo, hi] = itemRange(it);
+      for (let w = lo; w <= hi; w++) if (inSchedule(it, w))
+        for (let d = 0; d < 7; d++) if (isDayDone(it.id, w, d)) return dayDate(w, d);
+      return null;
+    }
+    /* 已完成时取实际检查日期（短格式 9/20） */
+    function firstDoneDateShort(it) {
+      const [lo, hi] = itemRange(it);
+      for (let w = lo; w <= hi; w++) if (inSchedule(it, w))
+        for (let d = 0; d < 7; d++) if (isDayDone(it.id, w, d)) {
+          const dt = dayDate(w, d); return (dt.getMonth() + 1) + '/' + dt.getDate();
+        }
+      return null;
+    }
+    /* 窗口期紧急度：'expired'=已过窗口 / 'urgent'=剩余≤14天 / null=正常 */
+    function daysLeftInWindow(it) {
+      const tw = todayWD(); if (!tw) return null;
+      const [lo, hi] = itemRange(it);
+      const endDay = hi * 7 + 6;                 // 窗口最后一天（含周内第6天）
+      const nowDay = tw.week * 7 + tw.day;
+      return endDay - nowDay;                // 剩余天数
+    }
+    function urgencyOf(it) {
+      /* 多次项目：本次已做就不提醒本次；过期按"最后一次有没有做"判断 */
+      if (isRepeat(it)) {
+        const tw = todayWD(); if (!tw) return null;
+        if (!inSchedule(it, tw.week)) return tw.week > itemRange(it)[1] ? (doneCountOf(it) > 0 ? null : 'expired') : null;
+        if (currentWeekDone(it)) return null;
+        const left = daysLeftInWindow(it);
+        if (left < 0) return 'expired';
+        if (left <= 14) return 'urgent';
+        return 'due';                       // 本周待做（不闪烁，只标徽标）
+      }
+      if (isItemDone(it)) return null;      // 单次项目：已做不提醒
+      const left = daysLeftInWindow(it);
+      if (left === null) return null;
+      if (left < 0) return 'expired';
+      if (left <= 14 && tw_nowInRange(it)) return 'urgent';
+      return null;
+    }
+    function tw_nowInRange(it) {
+      const tw = todayWD(); if (!tw) return false;
+      return inSchedule(it, tw.week) || tw.week < itemRange(it)[0];
+    }
+    /* 已完成时显示的实际检查日期（取最早一次） */
+    function firstDoneDate(it) {
+      const [lo, hi] = itemRange(it);
+      for (let w = lo; w <= hi; w++) if (inSchedule(it, w))
+        for (let d = 0; d < 7; d++) if (isDayDone(it.id, w, d)) {
+          const dt = dayDate(w, d);
+          return (dt.getMonth() + 1) + '月' + dt.getDate() + '日';
+        }
+      return null;
+    }
+    function weekDayOf(date) {
+      if (!LMP) return null;
+      const days = Math.floor((date - LMP) / 86400000);
+      if (days < 0) return null;
+      return {week: Math.floor(days / 7), day: days % 7};
+    }
+    function todayWD() {return weekDayOf(today());}
+    function weekContainsToday(w) {const wd = todayWD(); return wd && wd.week === w;}
+    function parseCost(str) {
+      if (!str) return null;
+      const m = str.match(/(\d+)\s*[-—~]\s*(\d+)/);
+      if (m) return (parseInt(m[1]) + parseInt(m[2])) / 2;
+      const n = str.match(/(\d+)/); return n ? parseInt(n[1]) : null;
+    }
+    /* 二选一互斥 */
+    function applyAltLinkage(id, willBeDone) {
+      const it = ITEMS.find(x => x.id === id);
+      if (!it || !it.altGroup || !willBeDone) return;
+      ITEMS.forEach(x => {if (x.altGroup === it.altGroup && x.id !== it.id) delete doneDays[x.id];});
+    }
+    /* 自适应格宽：周模式一屏约6.5周；展开按天时每天=一周格宽 */
+    function calcCellWidth() {
+      const sc = $('layout');
+      const itemCol = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--itemcol')) || 112;
+      const avail = Math.max(280, (sc.clientWidth || window.innerWidth) - itemCol);
+      let cw = Math.floor(avail / 6.5);
+      cw = Math.max(34, Math.min(64, cw));
+      document.documentElement.style.setProperty('--cw-week', cw + 'px');
+      document.documentElement.style.setProperty('--cw-day', cw + 'px');
+      return cw;
+    }
+
+    /* ================= 渲染 ================= */
+    function render() {
+      calcCellWidth();
+      const itemsCol = $('itemsCol'), grid = $('grid');
+      itemsCol.innerHTML = ''; grid.innerHTML = '';
+      const wd = todayWD();
+      if (!LMP) {$('emptyTip').style.display = 'block'; $('weekBadge').textContent = '孕 0 周 0 天 · 待设置'; renderBudget(); return;}
+      $('emptyTip').style.display = 'none';
+      if (currentCenter === null) currentCenter = wd ? Math.max(STARTW, Math.min(ENDW, wd.week)) : 10;
+      const todayW = wd ? wd.week : null;
+
+      /* 项目名列：必须与右侧网格逐行对齐 → 表头 + 天表头占位 + 31个项目行 */
+      const hc = document.createElement('div'); hc.className = 'items-head'; hc.textContent = '检查项目'; itemsCol.appendChild(hc);
+      const hs = document.createElement('div'); hs.className = 'items-sub';
+      hs.textContent = expandedWeek !== null ? `孕${expandedWeek}周 · 按天` : '孕周 / 日期';
+      itemsCol.appendChild(hs);
+      ITEMS.forEach(it => {
+        const row = document.createElement('div'); row.className = 'item-row';
+        const tc = it.level === 'must' ? 'must' : it.level === 'recommend' ? 'recommend' : 'optional';
+        const uw = urgencyOf(it);
+        let badge = '';
+        if (isRepeat(it)) {
+          const d = doneCountOf(it), t = totalCountOf(it);
+          badge = `<span class="urgentTag" style="background:${d >= t ? '#27ae60' : (uw === 'due' || uw === 'urgent' ? '#e67e22' : '#7f8c8d')}">${d}/${t}次</span>`;
+        } else if (uw === 'expired') {badge = '<span class="urgentTag" style="background:#7f8c8d">过期</span>';}
+        else if (uw === 'urgent') {badge = `<span class="urgentTag">剩${daysLeftInWindow(it)}天</span>`;}
+        row.innerHTML = `<span class="tag ${tc}"></span><div class="txt"><div class="iname">${it.name}${badge}</div><div class="ialias">${it.alias}</div></div>`;
+        row.onclick = () => openSheet(it); itemsCol.appendChild(row);
+      });
+
+      /* ===== 统一列定义：三行（周表头 / 天表头 / 项目行）都用同一套格子，列数、列宽必然一致 =====
+         展开的那一周 = 7 个格子（每天一格，与周格等宽）；其余周 = 1 个格子。 */
+      const cols = [];
+      for (let w = STARTW; w <= ENDW; w++) {
+        if (expandedWeek === w) {for (let d = 0; d < 7; d++) cols.push({w, d, exp: true});}
+        else cols.push({w, d: null, exp: false});
+      }
+      const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
+
+      /* 行1：周表头（展开时该周占7格，连成一条带，仅首格写"孕X周"） */
+      const heads = document.createElement('div'); heads.className = 'row headrow';
+      cols.forEach(c => {
+        const wh = document.createElement('div');
+        let cls = 'week-head'; if (c.exp) cls += ' band';
+        if (c.w === todayW) cls += ' today'; if (c.w === currentCenter) cls += ' center';
+        wh.className = cls; wh.dataset.week = c.w;
+        const ws = new Date(LMP); ws.setDate(ws.getDate() + c.w * 7);
+        if (!c.exp || c.d === 0)
+          wh.innerHTML = `<span>孕${c.w}周</span><span class="wn">${ws.getMonth() + 1}/${ws.getDate()}</span>`;
+        else
+          wh.innerHTML = '<span>&nbsp;</span><span class="wn">&nbsp;</span>';
+        heads.appendChild(wh);
+      });
+      grid.appendChild(heads);
+
+      /* 行2：天表头（展开格=日期+星期；周格=该周起止） */
+      const dhRow = document.createElement('div'); dhRow.className = 'row dayrow';
+      cols.forEach(c => {
+        const dh = document.createElement('div'); dh.className = 'day-head';
+        if (c.exp) {
+          const dt = dayDate(c.w, c.d); const dow = dt.getDay();
+          if (weekContainsToday(c.w) && todayWD().day === c.d) dh.classList.add('today');
+          if (dow === 0 || dow === 6) dh.classList.add('wkend');
+          dh.innerHTML = `<span class="dn">${dt.getDate()}</span><span>${dayNames[dow]}</span>`;
+        } else {
+          const ws = new Date(LMP); ws.setDate(ws.getDate() + c.w * 7);
+          const we = new Date(LMP); we.setDate(we.getDate() + c.w * 7 + 6);
+          const txt = (ws.getMonth() === we.getMonth())
+            ? `${ws.getMonth() + 1}/${ws.getDate()}-${we.getDate()}`
+            : `${ws.getMonth() + 1}/${ws.getDate()}-${we.getMonth() + 1}/${we.getDate()}`;
+          if (weekContainsToday(c.w)) dh.classList.add('today');
+          dh.innerHTML = `<span class="dn">${txt}</span>`;
+        }
+        dhRow.appendChild(dh);
+      });
+      grid.appendChild(dhRow);
+
+      /* 行3+：每个项目一行。先铺背景格（列线/today/居中高亮），再叠加【跨格长条】 */
+      const cw = currentCW();
+      ITEMS.forEach(it => {
+        const itemDone = isItemDone(it);
+        const row = document.createElement('div'); row.className = 'row row-rel';
+        cols.forEach(c => {
+          const cell = document.createElement('div'); cell.className = 'cell bg';
+          if (weekContainsToday(c.w)) cell.classList.add('today');
+          if (c.w === currentCenter) cell.classList.add('center');
+          /* 未展开时：整个格子都可点，记录的就是【所点格子对应的孕周】 */
+          if (inSchedule(it, c.w)) {
+            cell.classList.add('hit');
+            const marked = isDayDone(it.id, c.w, 0);
+            cell.title = `${it.name}｜孕${c.w}周｜${marked ? '已做，点击取消' : '点击标记这一周完成'}`;
+            cell.addEventListener('click', e => {e.stopPropagation(); toggleDay(it.id, c.w);});
+          }
+          row.appendChild(cell);
+        });
+        /* 把连续命中的格子合并成一条长条（跨格甘特条）——始终连续，不因展开而断开 */
+        const marks = cols.map(c => inSchedule(it, c.w));
+        /* 窗口期状态：临期(≤14天) / 已过期 → 用于闪烁提醒 */
+        const uw = urgencyOf(it);
+        const textLayer = [];                          // 长条文字层（最后统一挂载，保证在最上层）
+        /* 每格状态：0=不在窗口 1=待做 2=已做；连续同状态合并成一条
+           - 多次检查：按格（或展开按天）独立 → 各次互不影响
+           - 单次检查：整项联动 → 无论点哪天/哪周，整条一律算已完成（不会分段） */
+        const st = cols.map(c => {
+          if (!inSchedule(it, c.w)) return 0;
+          if (isRepeat(it)) return cellDoneOf(it, c) ? 2 : 1;
+          return isItemDone(it) ? 2 : 1;
+        });
+        let i = 0;
+        while (i < st.length) {
+          if (st[i] === 0) {i++; continue;}
+          const cur = st[i];
+          let j = i; while (j < st.length && st[j] === cur) j++;
+          const len = j - i, segW = Math.max(10, len * cw - 6);
+          const seg = document.createElement('div');
+          seg.className = `bar seg ${it.level} ${it.altGroup ? 'alt' : ''} ${cur === 2 ? 'allDone' : 'todo'}`;
+          if (cur === 1) {
+            if (uw === 'expired') seg.classList.add('expired');
+            else if (uw === 'urgent') seg.classList.add('urgent');
+            else if (uw === 'due') seg.classList.add('due');
+          }
+          seg.style.left = (i * cw + 3) + 'px';
+          seg.style.width = segW + 'px';
+          /* 窄条缩小内边距，尽量给文字腾地方 */
+          const pad = segW < 60 ? 2 : 7;
+          seg.style.padding = '0 ' + pad + 'px';
+          /* 文本自适应：从完整到简称逐级降级，保证短区间也能看见字 */
+          const fs = barFS(), avail = Math.max(6, segW - pad * 2);
+          const base = shortBase(it.name);
+          let txt = '';
+          if (cur === 2) {
+            /* 已做段：单次项目显示"实际哪天做的"；多次项目显示这一段起始日期 */
+            let dt;
+            if (isRepeat(it)) {
+              const c0 = cols[i]; dt = dayDate(c0.w, c0.exp ? c0.d : 0);
+            } else {
+              dt = firstDoneDateObj(it);
+              if (!dt) {const c0 = cols[i]; dt = dayDate(c0.w, c0.exp ? c0.d : 0);}
+            }
+            const full = (dt.getMonth() + 1) + '月' + dt.getDate() + '日';
+            const shortS = (dt.getMonth() + 1) + '/' + dt.getDate();
+            txt = fitText(['✓ ' + full, '✓' + shortS, '✓'], avail, fs);
+          } else if (uw === 'expired') {
+            txt = fitText(['已过期', '过期', '!'], avail, fs);
+          } else if (uw === 'urgent') {
+            const n = daysLeftInWindow(it);
+            txt = fitText([base + '剩' + n + '天', base.slice(0, 2) + '剩' + n + '天', '剩' + n + '天', '!' + n + 'd'], avail, fs);
+          } else {
+            const cands = [];
+            if (it.altGroup) cands.push('二选一');
+            if (uw === 'due' && isRepeat(it)) cands.push('本周待做');
+            cands.push(it.name);
+            for (let n = base.length; n >= 2; n--) cands.push(base.slice(0, n));
+            txt = fitText(cands, avail, fs);
+          }
+          seg.textContent = '';
+          row.appendChild(seg);
+          /* 文字层挂到行级（不是 seg 内部）：z-index:10 高于日格 5 → 永远不被覆盖 */
+          if (txt) {
+            const sp = document.createElement('span');
+            sp.className = 'segtext'; sp.textContent = txt;
+            sp.style.left = seg.style.left;
+            sp.style.width = seg.style.width;
+            sp.style.top = '6px'; sp.style.bottom = '6px';
+            sp.style.fontSize = fs + 'px';
+            if (seg.classList.contains('optional')) sp.style.color = '#5a6a6a';
+            textLayer.push(sp);                     // 延后到日格之后统一挂载
+          }
+          i = j;
+        }
+        /* 展开周：7 个整格热区（不再画圆圈），点哪格=哪天做的检查 */
+        if (expandedWeek !== null && inSchedule(it, expandedWeek)) {
+          const base = colIndexOf(expandedWeek, 0);
+          const tWD = todayWD();
+          for (let d = 0; d < 7; d++) {
+            const done = isDayDone(it.id, expandedWeek, d);   // 展开按天，每天独立
+            const dStart = new Date(LMP); dStart.setDate(dStart.getDate() + expandedWeek * 7 + d);
+            const dc = document.createElement('div');
+            dc.className = 'daycell' + (done ? ' done' : '') + ((weekContainsToday(expandedWeek) && tWD && tWD.day === d) ? ' today' : '');
+            dc.style.left = (base * cw + d * cw) + 'px';
+            dc.title = done
+              ? `${it.name}｜${dStart.getMonth() + 1}/${dStart.getDate()} 已做｜点击取消`
+              : `${it.name}｜点击标记 ${dStart.getMonth() + 1}/${dStart.getDate()} 完成`;
+            dc.addEventListener('click', e => {e.stopPropagation(); toggleDayDot(it.id, expandedWeek, d);});
+            row.appendChild(dc);
+          }
+        }
+        /* 文字层最后挂载 → DOM 顺序与 z-index 双重保证其在最上层 */
+        textLayer.forEach(sp => row.appendChild(sp));
+        grid.appendChild(row);
+      });
+
+      updateWeekBadge(); renderBudget();
+      requestAnimationFrame(() => {scrollCenterIntoView(false); syncStickyHeaders();});
+    }
+
+    /* ===== 页面滚动驱动的表头锁定 =====
+       仅当"日历第一行"滚到页面顶端（grid.top<=0）时才钉住表头；
+       钉住用 transform 补偿，元素仍在横向滚动流内 → 横滑自动同步，无需额外计算。 */
+    function syncStickyHeaders() {
+      const grid = $('grid'), ic = $('itemsCol');
+      if (!grid) return;
+      /* 钉住基准 = 页面顶部大标题栏的底部（header 是 sticky），而不是视口顶端 */
+      const hdr = document.querySelector('header');
+      const anchor = hdr ? hdr.getBoundingClientRect().bottom : 0;
+      const r = grid.getBoundingClientRect();
+      /* 仅在"日历顶部越过标题栏底部、且日历底部仍在其下方"时钉住 → 日历滚完自动解除 */
+      const dy = (r.top < anchor && r.bottom > anchor + 4) ? (anchor - r.top) : 0;
+      const tf = dy ? `translateY(${dy}px)` : '';
+      const hr = grid.children[0], dr = grid.children[1];
+      const pin = el => {
+        if (!el) return; el.style.transform = tf;
+        if (dy > 0) el.classList.add('pinned'); else el.classList.remove('pinned');
+      };
+      [hr, dr].forEach(pin);
+      if (ic) [ic.children[0], ic.children[1]].forEach(pin);
+    }
+
+    function updateWeekBadge() {
+      const wd = todayWD();
+      if (!wd) {$('weekBadge').textContent = '孕 0 周 0 天 · 待设置'; return;}
+      if (wd.week > 42) {$('weekBadge').textContent = '已超过孕 42 周，请核对日期'; return;}
+      $('weekBadge').textContent = `今天 孕 ${wd.week} 周 ${wd.day} 天`;
+      let h = `当前居中：孕 ${currentCenter} 周`;
+      if (expandedWeek !== null) h += ` · 已展开按天（孕 ${expandedWeek} 周）— 点圆框给当天打勾`;
+      $('centerHint').textContent = h;
+    }
+
+    /* 列索引：展开周占 7 格，其后的周整体右移 6 格 */
+    function colIndexOf(w, d) {
+      let i = w - STARTW;
+      if (expandedWeek !== null && expandedWeek < w) i += 6;
+      if (expandedWeek === w && typeof d === 'number') i += d;
+      return i;
+    }
+    function currentCW() {
+      return parseInt(getComputedStyle(document.documentElement).getPropertyValue('--cw-week')) || 44;
+    }
+    function currentItemCol() {
+      return parseInt(getComputedStyle(document.documentElement).getPropertyValue('--itemcol')) || 112;
+    }
+    function scrollCenterIntoView(smooth = true) {
+      try {
+        const sc = $('layout');
+        if (!sc || typeof sc.scrollTo !== 'function') return;
+        const cw = currentCW(), itemCol = currentItemCol();
+        const base = colIndexOf(currentCenter, 0);
+        /* 展开周：整段 7 格居中；否则单格居中 */
+        const centerX = (expandedWeek === currentCenter)
+          ? itemCol + base * cw + 3.5 * cw
+          : itemCol + base * cw + cw / 2;
+        sc.scrollTo({left: Math.max(0, centerX - sc.clientWidth / 2), behavior: smooth ? 'smooth' : 'auto'});
+      } catch (e) { }
+    }
+    /* 由横向坐标反推孕周（考虑展开周占 7 格） */
+    function weekAtX(x) {
+      const cw = currentCW();
+      for (let w = STARTW; w <= ENDW; w++) {
+        const i = colIndexOf(w, 0);
+        const width = (expandedWeek === w) ? cw * 7 : cw;
+        if (x >= i * cw && x < i * cw + width) return w;
+      }
+      return null;
+    }
+
+    /* 按天打勾 */
+    function toggleDay(id, w) {
+      const it = ITEMS.find(x => x.id === id); if (!it) return;
+      let d = 0;
+      if (expandedWeek === w && todayWD() && weekContainsToday(w)) d = todayWD().day;
+      toggleDayDot(id, w, d);
+    }
+    function toggleDayDot(id, w, d) {
+      const key = w + '-' + d; const set = daySet(id);
+      if (set.has(key)) {set.delete(key); if (set.size === 0) delete doneDays[id];}
+      else {set.add(key); applyAltLinkage(id, true);}
+      saveState(); render();
+    }
+
+    /* ================= 费用测算（永城居民医保口径） ================= */
+    function renderBudget() {
+      const box = $('budgetBox');
+      if (!LMP) {box.innerHTML = ''; return;}
+      let total = 0, freeSum = 0, clinicSum = 0, selfSum = 0;
+      const optLines = [];
+      ITEMS.forEach(it => {
+        const num = parseCost(it.cost); if (num === null) return;
+        if (it.level === 'optional' && !showOptional) return;   // 可选/高危项目可开关
+        total += num;
+        const r = it.reimb || '';
+        if (/免费/.test(r) && !/门诊统筹/.test(r) === false) { } // noop
+        if (/免费/.test(r)) {freeSum += num;}
+        else if (/门诊统筹/.test(r)) {clinicSum += num;}
+        else if (/自费/.test(r)) {selfSum += num;}
+      });
+      // 永城：县级及以上每次起付50元、报50%、年度封顶400元
+      const clinicRebate = Math.min(clinicSum * 0.5, 400);
+      const outOfPocket = total - freeSum - clinicRebate;
+      const html = `
+    <h3>💰 费用测算 · 永城市居民医保（仅产检门诊，不含住院分娩）</h3>
+    <div class="bline"><span>产检项目合计（参考中值）</span><b>≈ ${total.toFixed(0)} 元</b></div>
+    <div class="bline"><span>　− 免费项抵扣（NT、中唐、传染病筛查等）</span><b style="color:#27ae60">−${freeSum.toFixed(0)} 元</b></div>
+    <div class="bline"><span>　− 门诊统筹（合规×50%，受年封顶400元限制）</span><b style="color:#2980b9">−${clinicRebate.toFixed(0)} 元</b></div>
+    <div class="bline"><b>产检自费预估</b><b class="btotal" style="border:none;padding:0;margin:0">≈ ${outOfPocket.toFixed(0)} 元</b></div>
+    <div class="bline"><span>＋ 住院分娩（居民医保定额）</span><b style="color:#2980b9">顺产1000 / 剖宫产2000 元</b></div>
+    <div class="bline"><span>　（示例：顺产总费约1500–3500 → 个人约300–2500；剖宫产总费约4000–8000 → 个人约2000–6000）</span><span></span></div>
+    <div class="btotal">孕期医疗现金支出预估：约 ${(outOfPocket + 300).toFixed(0)}–${(outOfPocket + 6000).toFixed(0)} 元（顺产/剖宫产区间）</div>
+    <label class="toggle"><input type="checkbox" id="optChk" ${showOptional ? 'checked' : ''}> 预算含"可选/高危才做"项目（NIPT、羊穿、胎儿心超、子痫筛查、乙肝DNA）</label>
+    <div class="note">口径说明：门诊统筹按永城"县级及以上每次起付50元、政策范围内报50%、<b>年度封顶400元</b>"估算（2024年起商丘市级统筹）。免费项与门诊统筹不得就同一项目重复报销。费用为商丘/永城公立医院<b>参考区间中值估算</b>，非永城市人民医院报价，实际以医院收费与医保结算为准。</div>`;
+      box.innerHTML = html;
+      const chk = $('optChk');
+      if (chk) chk.addEventListener('change', e => {showOptional = e.target.checked; saveState(); render();});
+    }
+
+    /* ================= 详情弹窗 ================= */
+    let sheetItem = null;
+    function openSheet(it) {
+      sheetItem = it;
+      const lvlText = it.level === 'must' ? '必查' : it.level === 'recommend' ? '推荐做' : '可选 / 高危才做';
+      const done = isItemDone(it);
+      const isRep = isRepeat(it);
+      const dCnt = doneCountOf(it), tCnt = totalCountOf(it);
+      const [lo, hi] = itemRange(it);
+      const altTip = it.altGroup === 'screen'
+        ? '<p style="color:#e67e22;margin-top:8px;">💡 <b>二选一</b>：早唐 / 中唐 / NIPT 通常择一即可，勾选本项任一天会自动取消同组其他项。三者属不同筛查策略，不必重复做；NIPT异常后转产前诊断。</p>'
+        : (it.altGroup === 'diag' ? '<p style="color:#e67e22;margin-top:8px;">💡 仅筛查高风险或有高危指征者选择，符合条件可走免费产前诊断。</p>' : '');
+      $('sheetBody').innerHTML = `
+    <span class="cat ${it.level}">${lvlText}</span>
+    <h2>${it.name}</h2>
+    <div class="time">⏰ ${it.alias}${isRep ? `　🔁 多次检查：已完成 <b>${dCnt}/${tCnt}</b> 次（每次独立记录，互不联动）` : ''}</div>
+    <h3>📖 项目介绍</h3><p>${it.intro}</p>
+    ${altTip}
+    <h3>⚠️ 注意事项</h3><ul>${it.notice.map(n => `<li>${n}</li>`).join('')}</ul>
+    <h3>🧾 所需材料</h3><ul>${it.material.map(m => `<li>${m}</li>`).join('')}</ul>
+    <h3>💰 参考费用（永城/商丘公立医院）</h3><p class="price">${it.cost || '—'}</p>
+    <h3>🏥 医保报销（居民医保口径）</h3><div class="reimb">${it.reimb || '以就诊医院医保办为准'}</div>
+    <h3>📌 说明</h3><p>${it.policy || ''}</p>`;
+      let daysHtml = '<h3>✅ 已完成日期</h3><div class="daybar">';
+      let any = false;
+      for (let w = lo; w <= hi; w++) if (inSchedule(it, w)) for (let d = 0; d < 7; d++) if (isDayDone(it.id, w, d)) {
+        const dt = dayDate(w, d); any = true;
+        daysHtml += `<span class="dc">${dt.getMonth() + 1}/${dt.getDate()}（孕${w}周·${['日', '一', '二', '三', '四', '五', '六'][dt.getDay()]}）</span>`;
+      }
+      if (!any) daysHtml += '<span style="font-size:12px;color:#8a7a82;">尚未标记，回到日历点击格子按天打勾</span>';
+      daysHtml += '</div>';
+      $('sheetDays').innerHTML = daysHtml;
+      const btn = $('sheetDoneBtn');
+      btn.textContent = isRep
+        ? (done ? `✓ 已记录 ${dCnt}/${tCnt} 次 — 点击清除全部` : '快速标记：本周已完成')
+        : (done ? `✓ 已标记完成（${doneDaysCount(it)}次）— 点击清除` : '快速标记：该项已完成');
+      btn.className = 'donebtn' + (done ? ' undo' : '');
+      $('mask').classList.add('show');
+    }
+    function toggleSheetDone() {
+      if (!sheetItem) return;
+      const it = sheetItem;
+      const [lo, hi] = itemRange(it);
+      const set = daySet(it.id);
+      if (isItemDone(it)) {
+        for (let w = lo; w <= hi; w++) if (inSchedule(it, w)) for (let d = 0; d < 7; d++) set.delete(w + '-' + d);
+        if (set.size === 0) delete doneDays[it.id];
+      } else {
+        /* 多次项目：记在【当前孕周】（窗口内优先本周），单次项目：记在窗口起始周 */
+        const tw = todayWD();
+        let w = (tw && inSchedule(it, tw.week)) ? tw.week : lo;
+        if (!isRepeat(it)) w = lo;
+        set.add(w + '-0'); applyAltLinkage(it.id, true);
+      }
+      closeSheet(); saveState(); render();
+    }
+    function closeSheet() {$('mask').classList.remove('show'); sheetItem = null;}
+    $('mask').addEventListener('click', e => {if (e.target === $('mask')) closeSheet();});
+
+    /* ================= 交互 ================= */
+    $('grid').addEventListener('click', e => {
+      const head = e.target.closest('.week-head');
+      if (head) {
+        const w = Number(head.dataset.week);
+        if (expandedWeek === w) expandedWeek = null; else {currentCenter = w; expandedWeek = w;}
+        saveState(); render();
+      }
+    });
+    let scrollTimer = null;
+    $('layout').addEventListener('scroll', () => {
+      clearTimeout(scrollTimer);
+      scrollTimer = setTimeout(() => {
+        const sc = $('layout');
+        const itemCol = currentItemCol();
+        const w = weekAtX(sc.scrollLeft + sc.clientWidth / 2 - itemCol);
+        if (w !== null && w !== currentCenter) {currentCenter = w; updateWeekBadge();}
+      }, 150);
+    });
+    /* 页面滚动 → 驱动表头锁定（唯一滚动条） */
+    window.addEventListener('scroll', syncStickyHeaders, {passive: true});
+    /* 横向滑动时表头位置不变，但保险起见同步一次 */
+    $('layout').addEventListener('scroll', () => {syncStickyHeaders();}, {passive: true});
+
+    let rzTimer = null;
+    window.addEventListener('resize', () => {clearTimeout(rzTimer); rzTimer = setTimeout(() => {if (LMP) render();}, 150);});
+
+    $('lmpInput').addEventListener('change', e => {
+      if (!e.target.value) {LMP = null; saveState(); render(); return;}
+      const d = new Date(e.target.value); d.setHours(0, 0, 0, 0);
+      LMP = d; currentCenter = null; expandedWeek = null; saveState(); render();
+    });
+    $('panelBtn').addEventListener('click', () => {
+      const p = $('topPanel'); if (!p) return;
+      const hidden = p.style.display === 'none';
+      p.style.display = hidden ? '' : 'none';
+      showPanel = !hidden;
+      saveState();
+      if (LMP) render();
+    });
+    $('clearBtn').addEventListener('click', () => {
+      if (confirm('确定清空所有"已完成"打勾记录？此操作不可撤销。')) {
+        doneDays = {}; saveState(); render();
+      }
+    });
+    $('todayBtn').addEventListener('click', () => {
+      const wd = todayWD();
+      if (wd) {currentCenter = Math.max(STARTW, Math.min(ENDW, wd.week)); expandedWeek = null; saveState(); render();}
+    });
+
+    /* ================= 初始化 ================= */
+    (function init() {
+      const restored = loadState();
+      const tp = $('topPanel');
+      if (tp) {tp.style.display = showPanel ? '' : 'none';}
+      if (!restored) {
+        const d = new Date(2026, 6, 12);
+        $('lmpInput').value = d.toISOString().slice(0, 10);
+        LMP = new Date(d); LMP.setHours(0, 0, 0, 0);
+      }
+      render();
+    })();
+    window.__get = () => ({currentCenter, expandedWeek, doneDays, LMP, showOptional});
+    window.ITEMS = ITEMS; window.inSchedule = inSchedule; window.isItemDone = isItemDone;
+    window.syncStickyHeaders = syncStickyHeaders; window.urgencyOf = urgencyOf; window.daysLeftInWindow = daysLeftInWindow; window.firstDoneDate = firstDoneDate;
+  </script>
+</body>
+
+</html>
