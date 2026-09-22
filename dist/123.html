@@ -1070,13 +1070,6 @@
 
   <div id="topPanel">
     <div class="wrap">
-      <div class="legend">
-        <span><i class="dot must"></i>必查</span>
-        <span><i class="dot recommend"></i>推荐做</span>
-        <span><i class="dot optional"></i>可选/高危才做</span>
-        <span><i class="dot done"></i>按天打勾</span>
-      </div>
-
       <!-- 我的情况 + 政策 -->
       <div class="info-row">
         <section>
@@ -1141,6 +1134,17 @@
           <div class="card" id="budgetBox"></div>
         </section>
       </div>
+    </div>
+  </div>
+
+  <div id="topPanel2">
+    <div class="wrap">
+      <div class="legend">
+        <span><i class="dot must"></i>必查</span>
+        <span><i class="dot recommend"></i>推荐做</span>
+        <span><i class="dot optional"></i>可选/高危才做</span>
+        <span><i class="dot done"></i>按天打勾</span>
+      </div>
 
       <div class="tip">← 左右滑动看各孕周 · 当前孕周自动居中 · 点"孕X周"表头=展开该周按天（每天一格）· 未展开=按周记，展开=点哪格记哪天 · 点项目名看详情</div>
       <div class="centerhint" id="centerHint"></div>
@@ -1203,23 +1207,18 @@
       },
       {
         id: 'setup', name: '建档·基础全套', alias: '6-13⁺⁶周', level: 'must', weeks: [[6, 13]],
-        intro: '到永城市人民医院建立《母子健康手册》，完成病史采集、风险评估、血压体重、妇科检查，并开具首次全套化验。',
+        intro: `到永城市人民医院建立《母子健康手册》，完成病史采集、风险评估、血压体重、妇科检查，并开具首次全套化验。
+                基本检查项目包括体重、血压、心肺、妇科检查、血常规、尿常规、血型、肝功能、肾功能、阴道分泌物、HIV、乙肝表面抗原、梅毒血清学检测。
+                血常规：筛查贫血、感染、血小板异常；孕期血容量增加，贫血风险上升。
+                尿常规：筛查尿蛋白（子痫前期信号）、尿路感染、尿糖/尿酮体。
+                血型 ABO+Rh：识别ABO及Rh血型，Rh阴性者需重点登记，评估新生儿溶血与输血风险。
+                肝功能：排除是否患有急慢性肝炎、肝纤维化、肝硬化等，用于妊娠风险分层与后续复查对比。
+                肾功能：排查肾脏疾病等风险。
+                HIV、乙肝、梅毒：乙肝表面抗原、梅毒螺旋体抗体、HIV抗体，属母婴阻断必查项，阳性者需尽早干预。`,
         notice: ['建议挂上午号并空腹（需查肝肾功能、空腹血糖、血脂等）', '携带既往报告可避免重复检查', '主动告知要申请免费NT与免费中唐资格审核'],
         material: ['夫妻双方身份证', '医保电子凭证/社保卡', '既往B超与化验单', '结婚证、户口簿（建议）', '居住证（非永城户籍）'],
         cost: '300-800元', reimb: '门诊统筹',
         policy: '东城/东区院区妇产科门诊（1号楼二楼产科一站式门诊区域，到院再确认）；热线 0370-5201686。'
-      },
-      {
-        id: 'cbc', name: '血常规', alias: '建档时', level: 'must', weeks: [[6, 13]],
-        intro: '筛查贫血、感染、血小板异常；孕期血容量增加，贫血风险上升。',
-        notice: ['建议上午空腹', '与生化、空腹血糖同步安排'],
-        material: ['医保卡'], cost: '20-50元', reimb: '门诊统筹', policy: '建档必查基础项。'
-      },
-      {
-        id: 'bloodtype', name: '血型 ABO+Rh', alias: '建档时', level: 'must', weeks: [[6, 13]],
-        intro: '识别ABO及Rh血型，Rh阴性者需重点登记，评估新生儿溶血与输血风险。',
-        notice: ['携带既往血型报告可避免重复'], material: ['医保卡'],
-        cost: '20-50元', reimb: '门诊统筹', policy: '建档必查；Rh阴性需额外随访。'
       },
       {
         id: 'urine', name: '尿常规', alias: '每次产检', level: 'must', weeks: [[6, 40]], repeat: true,
@@ -1228,24 +1227,18 @@
         cost: '10-30元/次', reimb: '门诊统筹', policy: '贯穿全孕期的常规监测项。'
       },
       {
-        id: 'biochem', name: '肝肾功能+空腹血糖', alias: '建档时', level: 'must', weeks: [[6, 13]],
-        intro: '建立肝肾功能与血糖基线，排查基础糖尿病、肝肾疾病，用于妊娠风险分层与后续复查对比。',
-        notice: ['必须空腹', '宜与血常规同步抽血'], material: ['医保卡'],
-        cost: '100-250元', reimb: '门诊统筹', policy: '建档必查基线项目。'
-      },
-      {
-        id: 'infect', name: '传染病筛查', alias: '乙肝/梅毒/HIV', level: 'must', weeks: [[6, 13]],
-        intro: '乙肝表面抗原、梅毒螺旋体抗体、HIV抗体，属母婴阻断必查项，阳性者需尽早干预。',
-        notice: ['需空腹', 'HBsAg阳性者孕中晚期需复查HBV DNA与肝功能', '三病母婴阻断越早越好'],
-        material: ['身份证', '医保卡'], cost: '100-250元', reimb: '国家基本公共卫生免费提供（以医院执行为准）',
-        policy: '🎉 国家母婴阻断项目，建档时通常免费；具体以永城市人民医院执行为准。'
-      },
-      {
         id: 'thyroid', name: '甲状腺功能', alias: 'TSH/FT4/TPOAb', level: 'recommend', weeks: [[6, 13]],
         intro: '查TSH、FT4（必要时TPOAb）。甲功异常与流产、早产、胎儿神经发育相关。',
         notice: ['是否空腹按医院要求', '孕前已查且近期正常请携带报告避免重复'],
         material: ['医保卡'], cost: '100-200元', reimb: '门诊统筹',
         policy: '指南列为备查；有甲状腺病史者应作为必查。'
+      },
+      {
+        id: 'bg', name: '血糖', alias: '建档时', level: 'recommend', weeks: [[6, 13]],
+        intro: '排查妊娠期糖尿病（GDM）',
+        notice: ['是否空腹按医院要求', '孕前已查且近期正常请携带报告避免重复'],
+        material: ['医保卡'], cost: '100-200元', reimb: '门诊统筹',
+        policy: '指南列为备查；有高血糖史者应作为必查。'
       },
       {
         id: 'ecg', name: '心电图', alias: '建档时', level: 'must', weeks: [[6, 13]],
